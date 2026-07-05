@@ -1,0 +1,22 @@
+{
+  "name": "tare",
+  "version": "1.0.0",
+  "description": "Analyze web pages for bloat, tracking scripts, unused code, and surveillance",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "install-browsers": "npx playwright install chromium",
+    "export-index": "node server/export.js",
+    "test": "node --test server/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.5.2",
+    "playwright": "^1.44.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10"
+  },
+  "license": "MIT"
+}

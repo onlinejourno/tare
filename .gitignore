@@ -1,0 +1,16 @@
+node_modules/
+reports/*.json
+reports/*.html
+.env
+
+# Analyst research data — not code
+data/analyses.db
+data/analyses.db-shm
+data/analyses.db-wal
+
+# Export artefacts — deployed separately, not committed
+exports/
+# OS junk + local tooling (pre-public hardening)
+.DS_Store
+.claude/
+.agents/

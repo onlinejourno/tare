@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Digital Mirror — Page Accountability Tool</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-eyebrow">Companion tool for <em>The Digital Mirror</em></div>
+      <h1>Democratic Infrastructure Checker</h1>
+      <p>How reader-respecting is a news page's technical infrastructure? Surveillance trackers, RTB bid-stream exposure, consent integrity, page bloat, and performance — scored in five dimensions.</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Input -->
+    <section class="card" id="input-section">
+      <form id="analyze-form">
+        <label for="url-input" class="form-label">Enter a news page URL to analyse</label>
+        <div class="input-row">
+          <input type="url" id="url-input" placeholder="https://example.com/article" required autocomplete="off" spellcheck="false">
+          <button type="submit" id="analyze-btn">Analyse</button>
+        </div>
+        <p class="form-hint">Loads the page in a headless Chromium browser. Analysis takes 20–45 seconds.</p>
+      </form>
+    </section>
+
+    <!-- Progress -->
+    <section class="card hidden" id="progress-section">
+      <div class="progress-header">
+        <span id="progress-stage">Starting…</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </section>
+
+    <!-- Error -->
+    <section class="card error-card hidden" id="error-section">
+      <strong>Analysis failed</strong>
+      <p id="error-msg"></p>
+      <button id="retry-btn" class="btn-secondary">Try Again</button>
+    </section>
+
+    <!-- Results -->
+    <section class="hidden" id="results-section">
+
+      <!-- Bot-protection warning (shown when Cloudflare/WAF blocks the headless browser) -->
+      <div class="card hidden access-blocked-card" id="access-blocked-section">
+        <strong>⚠ Bot protection blocked the headless browser</strong>
+        <p id="access-blocked-msg"></p>
+      </div>
+
+      <!-- Score cards row -->
+      <div class="scores-row">
+
+        <!-- Infrastructure Score -->
+        <div class="card score-card">
+          <div class="score-card-eyebrow">⚙ Infrastructure Score</div>
+          <div class="score-card-hint">How reader-respecting is the technical apparatus?</div>
+          <div class="score-card-body">
+            <div class="score-card-left">
+              <canvas id="gauge-overall" width="140" height="90" class="gauge-canvas"></canvas>
+              <div class="overall-value" id="overall-val">—</div>
+              <div class="overall-grade" id="overall-grade"></div>
+              <div class="overall-url" id="overall-url"></div>
+            </div>
+            <div class="score-card-right">
+              <div class="dim-grid" id="dim-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Openness Score -->
+        <div class="card score-card">
+          <div class="score-card-eyebrow">📖 Openness Score</div>
+          <div class="score-card-hint">Is journalism open, participatory, and editorially independent?</div>
+          <div class="score-card-body">
+            <div class="score-card-left">
+              <canvas id="gauge-openness" width="140" height="90" class="gauge-canvas"></canvas>
+              <div class="overall-value" id="openness-val">—</div>
+              <div class="overall-grade" id="openness-grade"></div>
+            </div>
+            <div class="score-card-right">
+              <div class="dim-grid" id="openness-dim-grid"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Paywall Quality Score (shown only when a paywall platform is detected) -->
+      <div class="card hidden" id="paywall-section">
+        <div class="paywall-header">
+          <div>
+            <div class="score-card-eyebrow">🔒 Paywall Implementation Quality</div>
+            <p class="section-note" style="margin:0">How respectfully and cleanly is the paywall implemented? Graded on reader transparency, technical hygiene, reader respect, and performance overhead.</p>
+          </div>
+          <div class="paywall-score-bubble" id="paywall-score-bubble"></div>
+        </div>
+        <div id="paywall-detail"></div>
+      </div>
+
+      <!-- Flags -->
+      <div class="card hidden" id="flags-section">
+        <h2>Findings at a glance</h2>
+        <div id="flags-list"></div>
+      </div>
+
+      <!-- RTB cascade -->
+      <div class="card hidden" id="rtb-section">
+        <h2 id="rtb-title">RTB Cascade</h2>
+        <p class="section-note">Each bar represents one request to an ad-tech intermediary, timed from navigation start. This is the ~100ms auction that broadcasts reader identity to every buyer simultaneously.</p>
+        <div id="rtb-cascade"></div>
+      </div>
+
+      <!-- Google attribution -->
+      <div class="card hidden" id="google-section">
+        <h2>Google Ecosystem Attribution</h2>
+        <p class="section-note">Percentage of all network activity attributable to Google infrastructure — the same company whose Core Web Vitals algorithm penalises the resulting page slowness.</p>
+        <div id="google-stats"></div>
+      </div>
+
+      <!-- Consent timing -->
+      <div class="card hidden" id="consent-section">
+        <h2>Consent Timing Audit</h2>
+        <div id="consent-detail"></div>
+      </div>
+
+      <!-- Dark patterns -->
+      <div class="card hidden" id="dark-patterns-section">
+        <h2>Consent Dark Patterns</h2>
+        <p class="section-note">Design tricks that manipulate readers toward accepting tracking. A <em>Computers &amp; Security</em> study found 90% of popular websites use them — pre-ticked boxes, buried reject options, accept/decline visual asymmetry.</p>
+        <div id="dark-patterns-detail"></div>
+      </div>
+
+      <!-- Ad blocker wall -->
+      <div class="card hidden" id="adblock-section">
+        <h2>Ad Blocker Wall Test</h2>
+        <p class="section-note">Page loaded a second time with common ad domains blocked (simulating uBlock Origin). Does the site penalise readers who protect their own privacy?</p>
+        <div id="adblock-detail"></div>
+      </div>
+
+      <!-- Openness: Access & Paywall -->
+      <div class="card hidden" id="access-section">
+        <h2>Access &amp; Paywall</h2>
+        <p class="section-note">Is this journalism freely available to all readers, or gated behind money or data? Democratic journalism assumes universal access — paywalls and registration walls create different information environments for different economic classes.</p>
+        <div id="access-detail"></div>
+      </div>
+
+      <!-- Openness: Participation & Transparency -->
+      <div class="card hidden" id="participation-section">
+        <h2>Participation &amp; Editorial Transparency</h2>
+        <p class="section-note">Does the publication provide infrastructure for readers to engage, correct, and hold the journalism accountable? RSS feeds, bylines, corrections policies, and editorial standards statements are measurable proxies for institutional openness.</p>
+        <div id="participation-detail"></div>
+      </div>
+
+      <!-- Openness: AI Editorial Infrastructure -->
+      <div class="card hidden" id="ai-editorial-section">
+        <h2>AI Editorial Infrastructure</h2>
+        <p class="section-note">To what degree are editorial decisions — what readers see, which headline they read, when they hit a paywall — made by algorithmic systems rather than editorial judgment? These systems are invisible to readers but shape the information environment profoundly.</p>
+        <div id="ai-editorial-detail"></div>
+      </div>
+
+      <!-- Data Flow Audit -->
+      <div class="card hidden" id="data-flow-section">
+        <h2>Data Flow Audit</h2>
+        <p class="section-note">When you load this page, who learns what about you? This audit maps the actual flow of reader data — cookies set, identity sync requests, outbound data signals, and which organisations receive your information.</p>
+        <div id="data-flow-detail"></div>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="card">
+        <h2>Summary</h2>
+        <div class="stat-grid" id="summary-stats"></div>
+      </div>
+
+      <!-- Trackers -->
+      <div class="card">
+        <h2 id="tracker-heading">Trackers detected</h2>
+        <div id="tracker-list"></div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="card hidden" id="recs-section">
+        <h2 id="recs-heading">Recommendations</h2>
+        <div id="recs-list"></div>
+      </div>
+
+      <!-- JS Coverage -->
+      <div class="card hidden" id="coverage-section">
+        <h2 id="coverage-heading">JavaScript Coverage</h2>
+        <p class="section-note" id="coverage-note"></p>
+        <div id="coverage-list"></div>
+      </div>
+
+      <!-- Downloads -->
+      <div class="card downloads-card" id="downloads-section">
+        <h2>Download Full Report</h2>
+        <div class="download-row">
+          <a id="dl-html" class="btn-download" href="#" target="_blank">HTML Report</a>
+          <a id="dl-json" class="btn-download btn-secondary" href="#" target="_blank">JSON Data</a>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
