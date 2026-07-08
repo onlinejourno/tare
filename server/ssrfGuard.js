@@ -38,6 +38,9 @@ const PRIVATE_PATTERNS = [
 function isPrivateHostname(hostname) {
   if (!hostname) return true;
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+  // `h` is already lower-cased, so these need no /i flag. Non-IP internal names
+  // (.localhost/.internal); other internal TLDs resolve via DNS and are caught
+  // by guardedLookup at connect time.
   if (/^localhost$/.test(h) || h.endsWith('.localhost') || h.endsWith('.internal')) {
     return true;
   }
@@ -45,6 +48,10 @@ function isPrivateHostname(hostname) {
     let addr = ipaddr.parse(h);
     // Decode IPv4-mapped IPv6 (::ffff:x.x.x.x) to its embedded IPv4 so the
     // range check sees the real target rather than the opaque 'ipv4Mapped' range.
+    // Only the mapped form is decoded — the deprecated IPv4-*compatible* form
+    // (::x.x.x.x) is not kernel-translated, so a socket to it reaches the literal
+    // IPv6 address (a reserved ::/96 range that range() already rejects), not the
+    // embedded IPv4. So no decode is needed there.
     if (addr.kind() === 'ipv6' && addr.isIPv4MappedAddress()) {
       addr = addr.toIPv4Address();
     }

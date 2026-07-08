@@ -1,0 +1,32 @@
+# fly.web-bloat-checker.toml — deploys THIS repo's Tare backend as the Fly app
+# `web-bloat-checker`. Naming trap: onlinejourno.com/tools serves Tare at
+# tools.onlinejourno.com/tare, but its Next.js rewrite (`/tare/api/* ->
+# WEB_BLOAT_API`) is baked at build to https://web-bloat-checker.fly.dev. So the
+# public Tare backend is this app, NOT tare.fly.dev. Deploy deterministically:
+#   fly deploy -c fly.web-bloat-checker.toml -a web-bloat-checker --remote-only
+# (Identical to fly.toml except the app name — same Dockerfile, port, VM.)
+app = "web-bloat-checker"
+primary_region = "sin"
+
+[build]
+
+[http_service]
+  internal_port = 3000          # server/index.js: process.env.PORT || 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  # Restart a wedged machine (e.g. hung Chromium) — GET / returns 200.
+  [[http_service.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/"
+
+# Chromium (Playwright) is memory-hungry — 256MB default will OOM on page loads.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
