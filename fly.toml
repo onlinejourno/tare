@@ -15,6 +15,14 @@ primary_region = "iad"
   min_machines_running = 0
   processes = ["app"]
 
+  # Restart a wedged machine (e.g. hung Chromium) — GET / returns 200.
+  [[http_service.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/"
+
 # Chromium (Playwright) is memory-hungry — 256MB default will OOM on page loads.
 [[vm]]
   size = "shared-cpu-1x"
