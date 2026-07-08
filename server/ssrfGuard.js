@@ -6,6 +6,7 @@
 
 const dns = require('dns').promises;
 const dnsCb = require('dns');
+const ipaddr = require('ipaddr.js');
 
 const PRIVATE_PATTERNS = [
   /^localhost$/i,
@@ -24,10 +25,34 @@ const PRIVATE_PATTERNS = [
   /^::ffff:(127|10|0|192\.168|169\.254)\./i,       // IPv4-mapped IPv6
 ];
 
-/** Synchronous hostname/IP string check — used per-request inside the browser. */
+/**
+ * Synchronous hostname/IP string check — used per-request inside the browser
+ * and on every redirect target. Node skips the custom `guardedLookup` for
+ * IP-literal hosts (it connects directly), so for literals this string check is
+ * the ONLY defence. The regex list alone missed IPv6 forms that `new URL()`
+ * serialises to hex — e.g. `[::ffff:169.254.169.254]` becomes `::ffff:a9fe:a9fe`,
+ * which slipped straight through to the cloud metadata endpoint. Parse IP
+ * literals with ipaddr.js and reject any non-`unicast` range; keep the legacy
+ * patterns as defence-in-depth for non-IP hostnames and parser edge cases.
+ */
 function isPrivateHostname(hostname) {
   if (!hostname) return true;
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+  if (/^localhost$/.test(h) || h.endsWith('.localhost') || h.endsWith('.internal')) {
+    return true;
+  }
+  if (ipaddr.isValid(h)) {
+    let addr = ipaddr.parse(h);
+    // Decode IPv4-mapped IPv6 (::ffff:x.x.x.x) to its embedded IPv4 so the
+    // range check sees the real target rather than the opaque 'ipv4Mapped' range.
+    if (addr.kind() === 'ipv6' && addr.isIPv4MappedAddress()) {
+      addr = addr.toIPv4Address();
+    }
+    // 'unicast' is the only publicly-routable range; everything else
+    // (loopback, private, linkLocal, uniqueLocal, carrierGradeNat,
+    // unspecified, reserved, multicast, …) is off-limits.
+    if (addr.range() !== 'unicast') return true;
+  }
   return PRIVATE_PATTERNS.some((p) => p.test(h));
 }
 

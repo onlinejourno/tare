@@ -53,3 +53,28 @@ test('probe fetch path never touches private or non-http targets', async () => {
   const r = await probeRssFeeds('169.254.169.254');
   assert.deepStrictEqual(r, { found: false });
 });
+
+// Regression — IPv4-mapped IPv6 that new URL() serialises to hex form.
+// http://[::ffff:169.254.169.254]/ normalises to ::ffff:a9fe:a9fe, which the
+// old dotted-only regex missed — reaching the cloud metadata endpoint.
+test('isPrivateHostname blocks hex IPv4-mapped IPv6 literals', () => {
+  for (const h of [
+    '[::ffff:a9fe:a9fe]', '::ffff:a9fe:a9fe',   // 169.254.169.254 (metadata)
+    '[::ffff:7f00:1]',    '::ffff:7f00:1',      // 127.0.0.1
+    '::ffff:a00:1',                             // 10.0.0.1
+  ]) {
+    assert.strictEqual(isPrivateHostname(h), true, `${h} should be private`);
+  }
+});
+
+// The mapped-decode must not over-block genuinely public IPv4-mapped targets.
+test('isPrivateHostname allows public IPv4-mapped IPv6', () => {
+  for (const h of ['[::ffff:8.8.8.8]', '::ffff:808:808']) {
+    assert.strictEqual(isPrivateHostname(h), false, `${h} should be public`);
+  }
+});
+
+// 0.0.0.0/8 beyond the single 0.0.0.0 address.
+test('isPrivateHostname blocks the whole 0.0.0.0/8 range', () => {
+  assert.strictEqual(isPrivateHostname('0.0.0.1'), true);
+});
