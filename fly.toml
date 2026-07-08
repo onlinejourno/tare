@@ -1,0 +1,21 @@
+# Fly.io app config. Deploys via the existing Dockerfile (EXPOSE 3000).
+# NOTE: `app` must match the name you create with `fly apps create` (or run
+# `fly launch --no-deploy`, which rewrites this file). Change it if you pick
+# a different name, then set the FLY_API_TOKEN GitHub Actions secret.
+app = "tare"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 3000          # server/index.js: process.env.PORT || 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+# Chromium (Playwright) is memory-hungry — 256MB default will OOM on page loads.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
