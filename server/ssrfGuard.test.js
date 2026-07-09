@@ -33,13 +33,26 @@ test('validateUrl rejects literal private/metadata IPs', async () => {
   await assert.rejects(validateUrl('http://10.0.0.5/'));
 });
 
-test('validateUrl allows a public literal IP', async () => {
+test('validateUrl allows a public literal IP', async (t) => {
+  // Hermetic: stub the resolver so the test never calls getaddrinfo / touches the
+  // network. A public literal IP must pass the guard and come back normalised.
+  // (Node normally short-circuits dns.lookup for IP literals, but that is not
+  // guaranteed on every sandboxed CI image — mock so the outcome is deterministic.)
+  const dnsPromises = require('node:dns').promises;
+  t.mock.method(dnsPromises, 'lookup', async () => [{ address: '93.184.216.34', family: 4 }]);
   const ok = await validateUrl('http://93.184.216.34/');
   assert.match(ok, /93\.184\.216\.34/);
 });
 
 test('guardedLookup refuses hostnames resolving to private addresses', (t, done) => {
-  // localhost resolves locally (no external DNS) — must be blocked at connect time.
+  // Hermetic: stub the resolver to return a private address (as localhost would
+  // resolve locally via /etc/hosts) so the test never depends on DNS or a hosts
+  // file. guardedLookup must reject any resolution to a private IP at connect time.
+  const dnsMod = require('node:dns');
+  t.mock.method(dnsMod, 'lookup', (hostname, options, cb) => {
+    if (typeof options === 'function') { cb = options; }
+    cb(null, [{ address: '127.0.0.1', family: 4 }]);
+  });
   guardedLookup('localhost', {}, (err) => {
     assert.ok(err, 'localhost must be rejected');
     assert.match(err.message, /private/i);
