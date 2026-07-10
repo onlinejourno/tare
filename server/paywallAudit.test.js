@@ -69,3 +69,49 @@ describe('paywall type from openness signals', () => {
     assert.equal(result.dimensions.readerRespect, 25); // 80 − 40 hard − 15 sparse
   });
 });
+
+// ── Platform-request path (audit triggered without a content wall) ────────────
+// hasAnyPaywallPlatform is the *other* trigger for the skip guard: a detected
+// platform domain makes the section run even when wallType is 'none'.
+
+describe('platform detection path', () => {
+  test('Piano request with no content wall triggers audit and profiling penalty', async () => {
+    const result = await audit({
+      requests: [{ url: 'https://piano.io/api/v3/offer' }],
+      signals: { wallType: 'none' },
+    });
+    assert.notEqual(result, null);          // skip guard bypassed by platform, not wall
+    assert.equal(result.paywallType, 'none');
+    assert.equal(result.detected, true);
+    assert.equal(result.platform, 'Piano');
+    assert.equal(result.hasPiano, true);
+    assert.equal(result.profilesPlatform, true);
+    assert.equal(result.signals.totalPlatformCalls, 1);
+    // readerRespect: 80 − 15 profiling (no hard/reg penalty, no sparse guard at 'none')
+    assert.equal(result.dimensions.readerRespect, 65);
+    // transparency: 50 + 20 login (no surveillance endpoint → no −15 profiling-undisclosed)
+    assert.equal(result.dimensions.transparency, 70);
+  });
+
+  test('billing-only platform (Stripe) detected without profiling penalty', async () => {
+    const result = await audit({
+      requests: [{ url: 'https://stripe.com/checkout' }],
+      signals: { wallType: 'none' },
+    });
+    assert.notEqual(result, null);
+    assert.equal(result.platform, 'Stripe');
+    assert.equal(result.profilesPlatform, false); // Stripe profiles: false
+    assert.equal(result.dimensions.readerRespect, 80); // no profiling deduction
+  });
+
+  test('editorial_ai tracker alone triggers audit with no platform request', async () => {
+    const result = await audit({
+      trackers: [{ name: 'OutbrainReco', category: 'editorial_ai', severity: 'high' }],
+      signals: { wallType: 'none' },
+    });
+    assert.notEqual(result, null);
+    assert.equal(result.platform, 'OutbrainReco');
+    assert.equal(result.profilesPlatform, true); // high-severity editorial_ai tracker
+    assert.equal(result.signals.totalPlatformCalls, 0); // tracker, not a request
+  });
+});
