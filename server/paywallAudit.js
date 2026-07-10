@@ -77,7 +77,8 @@ function getBaseUrl(url) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 async function auditPaywall(page, allRequests, trackers, opennessSignals) {
-  const paywallType = opennessSignals?.paywallType || 'none';
+  // Openness signals name the wall-type field `wallType` (see openness.js).
+  const paywallType = opennessSignals?.wallType || 'none';
 
   // ── Platform detection ────────────────────────────────────────────────────
   const detectedPlatforms = new Map(); // domain → platform info
