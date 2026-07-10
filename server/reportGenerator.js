@@ -2,6 +2,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { dimensionLabel } = require('./scoring');
 
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 
@@ -61,18 +62,33 @@ const CAT_LABELS = {
   tag_manager: 'Tag Manager', ab_testing: 'A/B Testing', social: 'Social Embed', chat: 'Chat Widget',
 };
 
-const DIM_LABELS = {
-  surveillance: 'Surveillance', adTechDepth: 'Ad-Tech Depth',
-  consentIntegrity: 'Consent Integrity', pageBloat: 'Page Bloat', performance: 'Performance',
+// Dimension labels are owned by scoring.js (dimensionLabel). Only the report's
+// own prose descriptions live here, keyed by the canonical dimension keys.
+const DIM_DESCRIPTIONS = {
+  surveillance:            'Depth and severity of tracking apparatus deployed against readers',
+  adTechDepth:             'Participation in programmatic advertising / RTB ecosystem',
+  consentPaywallIntegrity: 'Honesty at the consent and paywall gates (pre-consent fires, CMP quality, paywall transparency)',
+  pageBloat:               'Material weight of the page — access barrier for mobile users',
+  openness:                'Access, participation infrastructure, and degree of AI editorial control',
+  performance:             'Actual loading speed and interactivity impact',
 };
 
-const DIM_DESCRIPTIONS = {
-  surveillance: 'Depth and severity of tracking apparatus deployed against readers',
-  adTechDepth: 'Participation in programmatic advertising / RTB ecosystem',
-  consentIntegrity: 'Honesty of the consent framework (pre-consent fires, CMP quality)',
-  pageBloat: 'Material weight of the page — access barrier for mobile users',
-  performance: 'Actual loading speed and interactivity impact',
-};
+// Render one table row per dimension the scorer actually produced. Iterating the
+// real dimensions object (not a hand-maintained key list) means a new or renamed
+// dimension can never silently render as 0 or vanish from the report.
+function dimensionRowsHtml(dims) {
+  return Object.entries(dims || {}).map(([key, s]) => {
+    const col = scoreColor(s);
+    return `<tr>
+      <td style="padding:.5rem .75rem;font-size:.85rem;font-weight:600;white-space:nowrap">${dimensionLabel(key)}</td>
+      <td style="padding:.5rem .75rem;width:100%">
+        ${bar(s, col, '12px')}
+        <div style="font-size:.75rem;color:#6b7280;margin-top:3px">${DIM_DESCRIPTIONS[key] || ''}</div>
+      </td>
+      <td style="padding:.5rem .75rem;font-size:.9rem;font-weight:700;color:${col};white-space:nowrap">${s}/100</td>
+    </tr>`;
+  }).join('');
+}
 
 function gaugesvg(score) {
   const color = scoreColor(score);
@@ -106,19 +122,7 @@ function generateHtmlReport(data) {
   }).join('');
 
   // ── Dimension score bars ──────────────────────────────────────────────────────
-  const dims = scores.dimensions || {};
-  const dimRows = Object.entries(DIM_LABELS).map(([key, label]) => {
-    const s = dims[key] ?? 0;
-    const col = scoreColor(s);
-    return `<tr>
-      <td style="padding:.5rem .75rem;font-size:.85rem;font-weight:600;white-space:nowrap">${label}</td>
-      <td style="padding:.5rem .75rem;width:100%">
-        ${bar(s, col, '12px')}
-        <div style="font-size:.75rem;color:#6b7280;margin-top:3px">${DIM_DESCRIPTIONS[key]}</div>
-      </td>
-      <td style="padding:.5rem .75rem;font-size:.9rem;font-weight:700;color:${col};white-space:nowrap">${s}/100</td>
-    </tr>`;
-  }).join('');
+  const dimRows = dimensionRowsHtml(scores.dimensions);
 
   // ── RTB cascade ───────────────────────────────────────────────────────────────
   let rtbHtml = '';
@@ -423,4 +427,4 @@ function writeReports(jobId, data) {
   fs.writeFileSync(path.join(REPORTS_DIR, `${jobId}.html`), generateHtmlReport(data));
 }
 
-module.exports = { writeReports };
+module.exports = { writeReports, generateHtmlReport, dimensionRowsHtml };
