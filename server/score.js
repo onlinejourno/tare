@@ -13,7 +13,7 @@
  */
 
 const { democraticInfrastructureScore, scoreGrade, computeFlags } = require('./scoring');
-const { opennessGrade } = require('./openness');
+const { scoreOpenness, opennessGrade } = require('./openness');
 const { paywallGrade } = require('./paywallAudit');
 const { generateRecommendations } = require('./recommendations');
 
@@ -134,7 +134,9 @@ function scoreFromSignals(payload) {
   const performanceMetrics = { lcp, tbt, ttfb };
 
   // ── Openness ─────────────────────────────────────────────────────────────
-  const openness = _opennessFromSignals(domData);
+  // Single canonical scorer (openness.js). Adapt the Live Browser signal bag
+  // into the DOM shape it expects, then delegate — no drifting second copy.
+  const openness = scoreOpenness(_opennessDom(domData), _opennessTrackers(domData, trackers));
 
   // ── Paywall audit — minimal shape from domData ───────────────────────────
   const wallType = domData.paywallType || 'none';
@@ -215,64 +217,47 @@ function scoreFromSignals(payload) {
   return result;
 }
 
-// ── Openness from boolean signals ────────────────────────────────────────────
-/**
- * Compute openness score from DOM boolean signals collected by Claude.
- * Simplified version of analyzeOpenness() for Live Browser mode — no Playwright.
- *
- * Weights mirror openness.js: access 40%, participation 40%, aiEditorial 20%.
- */
-function _opennessFromSignals(domData) {
-  // Access sub-score
-  let accessScore = 100;
-  const wallType = domData.paywallType || 'none';
-  if (wallType === 'hard')         accessScore -= 40;
-  if (wallType === 'metered')      accessScore -= 20;
-  if (wallType === 'registration') accessScore -= 10;
+// ── Live Browser → openness.js adapters ──────────────────────────────────────
+// scoreOpenness(dom, trackers) infers the wall type from paywall arrays and the
+// AI-editorial signals from trackers. Live Browser instead hands us a flat
+// signal bag: a `paywallType` string and pre-classified AI booleans. These two
+// helpers translate that bag into the exact shape the canonical scorer reads,
+// so Live Browser and Headless run identical scoring logic.
 
-  // Participation sub-score — mirrors openness.js point allocation
-  let participationScore = 0;
-  if (domData.hasRss)             participationScore += 18;
-  if (domData.hasAbout)           participationScore += 10;
-  if (domData.hasEditorialPolicy) participationScore += 12;
-  if (domData.hasCorrections)     participationScore += 14;
-  if (domData.hasContact)         participationScore += 10;
-  if (domData.hasBylines)         participationScore += 16;
-  participationScore = Math.min(100, participationScore);
-
-  // AI/editorial control sub-score
-  let aiScore = 100;
-  if (domData.hasAlgoRecs)          aiScore -= 35;
-  if (domData.hasPredictivePaywall) aiScore -= 25;
-  if (domData.hasHeadlineTesting)   aiScore -= 15;
-  aiScore = Math.max(0, aiScore);
-
-  const overall = Math.round(
-    accessScore        * 0.40 +
-    participationScore * 0.40 +
-    aiScore            * 0.20
-  );
-
-  // signals shape expected by computeFlags()
-  const aiSignals = [];
-  if (domData.hasAlgoRecs)          aiSignals.push({ id: 'algo_recs' });
-  if (domData.hasPredictivePaywall) aiSignals.push({ id: 'ai_paywall' });
-  if (domData.hasHeadlineTesting)   aiSignals.push({ id: 'headline_testing' });
-  if (aiSignals.length === 0)       aiSignals.push({ id: 'no_ai_detected' });
-
+function _opennessDom(domData) {
+  const wall = domData.paywallType || 'none';
   return {
-    overall: Math.max(0, Math.min(100, overall)),
-    dimensions: {
-      access:        Math.max(0, Math.min(100, accessScore)),
-      participation: participationScore,
-      aiEditorial:   aiScore,
-    },
-    signals: {
-      wallType,
-      hasRss:    domData.hasRss ?? false,
-      aiSignals,
-    },
+    // Wall type is carried by which array is non-empty (openness.js reads .length).
+    paywallEls:     [],
+    hardPaywall:    wall === 'hard'         ? ['live-browser: hard paywall']   : [],
+    meteredPaywall: wall === 'metered'      ? ['live-browser: metered wall']   : [],
+    regWall:        wall === 'registration' ? ['live-browser: registration']   : [],
+    // Participation / accessibility booleans (absent Live Browser signals stay false).
+    hasRss:             !!domData.hasRss,
+    hasBylines:         !!domData.hasBylines,
+    hasComments:        !!domData.hasComments,
+    hasCorrections:     !!domData.hasCorrections,
+    hasContact:         !!domData.hasContact,
+    hasEditorialPolicy: !!domData.hasEditorialPolicy,
+    hasCreativeCommons: !!domData.hasCreativeCommons,
+    altRatio:           domData.altRatio ?? 0,
+    hasMain:            !!domData.hasMain,
+    // AI-editorial DOM signals.
+    hasAlgoWidgets:     !!domData.hasAlgoWidgets,
+    aiDisclosures:      domData.aiDisclosures ?? [],
+    htmlLang:           domData.htmlLang ?? 'en',
   };
+}
+
+// openness.js derives AI-editorial penalties from trackers. Live Browser may
+// instead flag them as booleans; synthesise matching trackers so the same
+// detection fires. Real trackers are kept — `.some()` checks make dups harmless.
+function _opennessTrackers(domData, trackers) {
+  const synth = [];
+  if (domData.hasAlgoRecs)          synth.push({ name: 'Taboola', category: 'advertising' });
+  if (domData.hasPredictivePaywall) synth.push({ name: 'Piano',   category: 'editorial_ai' });
+  if (domData.hasHeadlineTesting)   synth.push({ name: 'A/B Test', category: 'ab_testing' });
+  return synth.length ? [...trackers, ...synth] : trackers;
 }
 
 module.exports = { scoreFromSignals };

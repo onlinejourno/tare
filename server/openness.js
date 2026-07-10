@@ -684,4 +684,6 @@ function opennessGrade(score) {
   return                   { grade: 'F', label: 'Opaque & Gated',      colorClass: 'red'    };
 }
 
-module.exports = { analyzeOpenness, opennessGrade, probeRssFeeds, probeEditorialSignals, probeArticleSignals };
+// scoreOpenness is the single canonical Openness scorer. Both modes call it:
+// Headless via analyzeOpenness (above), Live Browser via score.js's adapter.
+module.exports = { analyzeOpenness, scoreOpenness: _scoreOpenness, opennessGrade, probeRssFeeds, probeEditorialSignals, probeArticleSignals };
