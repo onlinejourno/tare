@@ -12,9 +12,8 @@
  * not in Claude's prompt. Changes to the rubric propagate automatically.
  */
 
-const { democraticInfrastructureScore, scoreGrade, computeFlags } = require('./scoring');
-const { scoreOpenness, opennessGrade } = require('./openness');
-const { paywallGrade } = require('./paywallAudit');
+const { democraticInfrastructureScore, computeFlags, assembleScores } = require('./scoring');
+const { scoreOpenness } = require('./openness');
 const { generateRecommendations } = require('./recommendations');
 
 // Hostname suffix match — "sub.doubleclick.net" matches "doubleclick.net";
@@ -183,34 +182,11 @@ function scoreFromSignals(payload) {
 
   const result = {
     ...analysis,
-    scores: {
-      overall:      dis.overall,
-      overallGrade: scoreGrade(dis.overall),
-      dimensions:   dis.dimensions,
-      dimensionGrades: Object.fromEntries(
-        Object.entries(dis.dimensions).map(([k, v]) => [k, scoreGrade(v)])
-      ),
-      flags,
-      openness:      open.overall,
-      opennessGrade: opennessGrade(open.overall),
-      opennessDimensions: open.dimensions,
-      opennessDimensionGrades: Object.fromEntries(
-        Object.entries(open.dimensions || {}).map(([k, v]) => [k, opennessGrade(v)])
-      ),
-      ...(paywallAudit ? {
-        paywallScore:      paywallAudit.score,
-        paywallGrade:      paywallGrade(paywallAudit.score),
-        paywallDimensions: paywallAudit.dimensions,
-      } : {}),
-      // Legacy aliases — report generator compatibility
-      pageHealth:      dis.dimensions.pageBloat,
-      pageHealthGrade: scoreGrade(dis.dimensions.pageBloat),
-      privacy:         dis.dimensions.surveillance,
-      privacyGrade:    scoreGrade(dis.dimensions.surveillance),
+    scores: assembleScores(dis, flags, open, paywallAudit, {
       // Live Browser mode metadata
       _liveBrowserMode: true,
       _missingSignals:  missingSignals,
-    },
+    }),
     recommendations: generateRecommendations(analysis),
   };
 

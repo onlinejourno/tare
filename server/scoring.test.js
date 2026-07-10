@@ -20,6 +20,7 @@ const {
   democraticInfrastructureScore,
   scoreGrade,
   dimensionLabel,
+  assembleScores,
 } = require('./scoring');
 
 // Minimal "clean site" analysis: no trackers, no RTB, tiny page, honest banner.
@@ -371,5 +372,53 @@ describe('dimensionLabel', () => {
       'Page Bloat', 'Openness', 'Performance', 'Consent Integrity',
     ]);
     assert.equal(dimensionLabel('unknown_key'), 'unknown_key');
+  });
+});
+
+// ── Single scores-assembly seam (used by both index.js and score.js) ──────────
+
+describe('assembleScores builds the scores object for both modes', () => {
+  const dis = {
+    overall: 72,
+    dimensions: {
+      surveillance: 80, adTechDepth: 60, consentPaywallIntegrity: 45,
+      pageBloat: 70, openness: 55, performance: 90,
+    },
+  };
+  const openness = { overall: 55, dimensions: { access: 40, participation: 50, aiEditorial: 70 } };
+  const flags = [{ id: 'x' }];
+
+  test('grades the composite and every dimension', () => {
+    const s = assembleScores(dis, flags, openness, null);
+    assert.equal(s.overall, 72);
+    assert.equal(s.overallGrade.grade, 'B');           // 72 → B
+    assert.equal(s.dimensionGrades.surveillance.grade, 'A'); // 80 → A
+    assert.deepEqual(s.dimensions, dis.dimensions);
+    assert.equal(s.flags, flags);
+  });
+
+  test('carries the Openness panel with its own grade scale', () => {
+    const s = assembleScores(dis, flags, openness, null);
+    assert.equal(s.openness, 55);
+    assert.equal(s.opennessGrade.grade, 'C');               // opennessGrade: 55 → C
+    assert.equal(s.opennessDimensionGrades.access.grade, 'D'); // 40 → D
+  });
+
+  test('omits paywall keys when no paywall audit, includes them when present', () => {
+    assert.equal(assembleScores(dis, flags, openness, null).paywallScore, undefined);
+    const s = assembleScores(dis, flags, openness, { score: 65, dimensions: { transparency: 50 } });
+    assert.equal(s.paywallScore, 65);
+    assert.equal(s.paywallDimensions.transparency, 50);
+  });
+
+  test('keeps legacy aliases and merges caller extras', () => {
+    const s = assembleScores(dis, flags, openness, null, { _liveBrowserMode: true });
+    assert.equal(s.pageHealth, 70);       // = pageBloat
+    assert.equal(s.privacy, 80);          // = surveillance
+    assert.equal(s._liveBrowserMode, true);
+  });
+
+  test('defaults a missing openness result to overall 50', () => {
+    assert.equal(assembleScores(dis, flags, null, null).openness, 50);
   });
 });

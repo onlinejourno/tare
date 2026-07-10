@@ -1,5 +1,8 @@
 'use strict';
 
+const { opennessGrade } = require('./openness');
+const { paywallGrade }  = require('./paywallAudit');
+
 // Clamp to 0–100.
 function clamp(n) { return Math.max(0, Math.min(100, Math.round(n))); }
 
@@ -296,6 +299,46 @@ function dimensionLabel(key) {
   }[key] || key;
 }
 
+// Assemble the public `scores` object from a scored Analysis. The SINGLE seam
+// both modes build through — Headless (index.js) and Live Browser (score.js) —
+// so a new/renamed score key changes one place, not two drifting copies.
+//   dis     — democraticInfrastructureScore() result { overall, dimensions }
+//   flags   — computeFlags() result
+//   opennessResult — analyzeOpenness()/scoreOpenness() result, or null
+//   paywallAudit   — auditPaywall() result, or null when no paywall detected
+//   extra   — mode-specific keys merged last (e.g. _liveBrowserMode)
+function assembleScores(dis, flags, opennessResult, paywallAudit, extra = {}) {
+  const open = opennessResult || { overall: 50, dimensions: {} };
+  return {
+    overall:      dis.overall,
+    overallGrade: scoreGrade(dis.overall),
+    dimensions:   dis.dimensions,
+    dimensionGrades: Object.fromEntries(
+      Object.entries(dis.dimensions).map(([k, v]) => [k, scoreGrade(v)])
+    ),
+    flags,
+    // Openness Score — second panel, its own A–F scale
+    openness:      open.overall,
+    opennessGrade: opennessGrade(open.overall),
+    opennessDimensions: open.dimensions,
+    opennessDimensionGrades: Object.fromEntries(
+      Object.entries(open.dimensions || {}).map(([k, v]) => [k, opennessGrade(v)])
+    ),
+    // Paywall Quality Score — only when a paywall platform is detected
+    ...(paywallAudit ? {
+      paywallScore:      paywallAudit.score,
+      paywallGrade:      paywallGrade(paywallAudit.score),
+      paywallDimensions: paywallAudit.dimensions,
+    } : {}),
+    // Legacy aliases kept for report generator compatibility
+    pageHealth:      dis.dimensions.pageBloat,
+    pageHealthGrade: scoreGrade(dis.dimensions.pageBloat),
+    privacy:         dis.dimensions.surveillance,
+    privacyGrade:    scoreGrade(dis.dimensions.surveillance),
+    ...extra,
+  };
+}
+
 // ── Flags (badges shown on dashboard) ────────────────────────────────────────
 
 function computeFlags(analysis) {
@@ -388,6 +431,7 @@ module.exports = {
   democraticInfrastructureScore,
   scoreGrade,
   dimensionLabel,
+  assembleScores,
   computeFlags,
   // Legacy aliases
   pageHealthScore:      pageBloatScore,

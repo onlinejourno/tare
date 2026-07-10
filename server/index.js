@@ -11,9 +11,7 @@ const { analyzeUrl, classifyRequests } = require('./analyzer');
 const { scoreFromSignals } = require('./score');
 const { saveAnalysis } = require('./db');
 const { probeRssFeeds, probeEditorialSignals, probeArticleSignals } = require('./openness');
-const { democraticInfrastructureScore, scoreGrade, computeFlags } = require('./scoring');
-const { opennessGrade } = require('./openness');
-const { paywallGrade } = require('./paywallAudit');
+const { democraticInfrastructureScore, computeFlags, assembleScores } = require('./scoring');
 const { generateRecommendations } = require('./recommendations');
 const { writeReports } = require('./reportGenerator');
 const jobs = require('./jobs');
@@ -90,33 +88,7 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
 
       const result = {
         ...rawResult,
-        scores: {
-          overall: dis.overall,
-          overallGrade: scoreGrade(dis.overall),
-          dimensions: dis.dimensions,
-          dimensionGrades: Object.fromEntries(
-            Object.entries(dis.dimensions).map(([k, v]) => [k, scoreGrade(v)])
-          ),
-          flags,
-          // Openness Score — second panel
-          openness: open.overall,
-          opennessGrade: opennessGrade(open.overall),
-          opennessDimensions: open.dimensions,
-          opennessDimensionGrades: Object.fromEntries(
-            Object.entries(open.dimensions || {}).map(([k, v]) => [k, opennessGrade(v)])
-          ),
-          // Paywall Quality Score (only present when a paywall platform is detected)
-          ...(pw ? {
-            paywallScore:      pw.score,
-            paywallGrade:      paywallGrade(pw.score),
-            paywallDimensions: pw.dimensions,
-          } : {}),
-          // Legacy aliases kept for report generator compatibility
-          pageHealth: dis.dimensions.pageBloat,
-          pageHealthGrade: scoreGrade(dis.dimensions.pageBloat),
-          privacy: dis.dimensions.surveillance,
-          privacyGrade: scoreGrade(dis.dimensions.surveillance),
-        },
+        scores: assembleScores(dis, flags, open, pw),
         recommendations: generateRecommendations(rawResult),
       };
 
