@@ -251,3 +251,23 @@ describe('opennessGrade bands', () => {
     });
   }
 });
+
+// ── Playwright evaluate contract (regression) ─────────────────────────────────
+// page.evaluate(fn, arg) accepts exactly ONE argument. The extractor was once
+// invoked as evaluate(fn, hard, metered, reg) — Playwright throws "Too many
+// arguments", so every Headless run silently fell back to all-false signals.
+describe('page.evaluate contract', () => {
+  test('analyzeOpenness passes a function plus exactly one argument', async () => {
+    const argCounts = [];
+    const fakePage = {
+      evaluate: async (...args) => {
+        argCounts.push(args.length);
+        assert.equal(typeof args[0], 'function');
+        return makeDom();
+      },
+    };
+    await analyzeOpenness(fakePage, [], {});
+    assert.ok(argCounts.length >= 1, 'evaluate must be called');
+    for (const n of argCounts) assert.equal(n, 2, 'evaluate(fn, singleArg) — Playwright allows one arg only');
+  });
+});

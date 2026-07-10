@@ -18,7 +18,8 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@flydotio/dockerfile": "^0.7.10"
+    "@flydotio/dockerfile": "^0.7.10",
+    "jsdom": "^29.1.1"
   },
   "license": "MIT"
 }
