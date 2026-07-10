@@ -2,7 +2,8 @@
 
 const { chromium, errors: pwErrors } = require('playwright');
 const { isPrivateHostname } = require('./ssrfGuard');
-const { TRACKERS, GOOGLE_DOMAINS, CATEGORY_META } = require('./data/trackers');
+const { CATEGORY_META } = require('./data/trackers');
+const { lookupTracker, isGoogleHostname } = require('./trackerRegistry');
 const { detectDarkPatterns, detectAdBlockerWall } = require('./darkPatterns');
 const { analyzeOpenness, probeRssFeeds, probeEditorialSignals, probeArticleSignals } = require('./openness');
 const { auditDataFlow } = require('./dataFlow');
@@ -19,14 +20,7 @@ function getHostname(url) {
 }
 
 function detectTracker(requestUrl) {
-  const hostname = getHostname(requestUrl);
-  if (!hostname) return null;
-  for (const [key, info] of Object.entries(TRACKERS)) {
-    if (hostname === key || hostname.endsWith('.' + key)) {
-      return { ...info, hostname, matchedKey: key };
-    }
-  }
-  return null;
+  return lookupTracker(getHostname(requestUrl));
 }
 
 function isThirdParty(requestUrl, pageHostname) {
@@ -36,8 +30,7 @@ function isThirdParty(requestUrl, pageHostname) {
 }
 
 function isGoogleDomain(requestUrl) {
-  const hostname = getHostname(requestUrl);
-  return GOOGLE_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+  return isGoogleHostname(getHostname(requestUrl));
 }
 
 function computeCoverage(entry) {
