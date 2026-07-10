@@ -12,10 +12,7 @@
  * not in Claude's prompt. Changes to the rubric propagate automatically.
  */
 
-const { democraticInfrastructureScore, scoreGrade, computeFlags } = require('./scoring');
-const { opennessGrade } = require('./openness');
-const { paywallGrade } = require('./paywallAudit');
-const { generateRecommendations } = require('./recommendations');
+const { assembleAnalysisResult } = require('./analysisResult');
 
 // Hostname suffix match — "sub.doubleclick.net" matches "doubleclick.net";
 // "evil-doubleclick.net.attacker.com" does not (unlike a substring check).
@@ -167,10 +164,6 @@ function scoreFromSignals(payload) {
   };
 
   // ── Score ────────────────────────────────────────────────────────────────
-  const dis   = democraticInfrastructureScore(analysis);
-  const flags = computeFlags(analysis);
-  const open  = openness;
-
   // Track which signals were unavailable — shown as flags in the report card
   const missingSignals = [
     'jsCoverage',                                   // always missing in live browser
@@ -179,40 +172,7 @@ function scoreFromSignals(payload) {
     ...(transferKB == null ? ['transferKB'] : []),
   ];
 
-  const result = {
-    ...analysis,
-    scores: {
-      overall:      dis.overall,
-      overallGrade: scoreGrade(dis.overall),
-      dimensions:   dis.dimensions,
-      dimensionGrades: Object.fromEntries(
-        Object.entries(dis.dimensions).map(([k, v]) => [k, scoreGrade(v)])
-      ),
-      flags,
-      openness:      open.overall,
-      opennessGrade: opennessGrade(open.overall),
-      opennessDimensions: open.dimensions,
-      opennessDimensionGrades: Object.fromEntries(
-        Object.entries(open.dimensions || {}).map(([k, v]) => [k, opennessGrade(v)])
-      ),
-      ...(paywallAudit ? {
-        paywallScore:      paywallAudit.score,
-        paywallGrade:      paywallGrade(paywallAudit.score),
-        paywallDimensions: paywallAudit.dimensions,
-      } : {}),
-      // Legacy aliases — report generator compatibility
-      pageHealth:      dis.dimensions.pageBloat,
-      pageHealthGrade: scoreGrade(dis.dimensions.pageBloat),
-      privacy:         dis.dimensions.surveillance,
-      privacyGrade:    scoreGrade(dis.dimensions.surveillance),
-      // Live Browser mode metadata
-      _liveBrowserMode: true,
-      _missingSignals:  missingSignals,
-    },
-    recommendations: generateRecommendations(analysis),
-  };
-
-  return result;
+  return assembleAnalysisResult(analysis, { mode: 'live-browser', missingSignals });
 }
 
 // ── Openness from boolean signals ────────────────────────────────────────────
