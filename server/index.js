@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const { analyzeUrl, classifyRequests } = require('./analyzer');
 const { scoreFromSignals } = require('./score');
 const { saveAnalysis } = require('./db');
-const { probeRssFeeds, probeEditorialSignals, probeArticleSignals } = require('./openness');
+const { startSignalProbes, upgradeDomSignals } = require('./signalProbes');
 const { assembleAnalysisResult } = require('./analysisResult');
 const { writeReports } = require('./reportGenerator');
 const jobs = require('./jobs');
@@ -281,34 +281,8 @@ app.post('/score', analyzeLimiter, async (req, res) => {
       } catch (err) {
         return res.status(400).json({ error: err.message });
       }
-      let hostname;
-      try { hostname = new URL(payload.url).hostname; } catch { hostname = null; }
-
-      if (hostname) {
-        const urlPathDepth = (() => {
-          try { return new URL(payload.url).pathname.split('/').filter(Boolean).length; } catch { return 0; }
-        })();
-
-        const [rssProbe, editorialProbe, articleProbe] = await Promise.all([
-          probeRssFeeds(hostname),
-          probeEditorialSignals(hostname),
-          urlPathDepth >= 2
-            ? probeArticleSignals(payload.url)
-            : Promise.resolve({ hasBylines: false, hasCorrections: false, hasContact: false }),
-        ]);
-
-        // Upgrade-only — never downgrade DOM signals already detected
-        const d = payload.domData || {};
-        if (rssProbe?.found          && !d.hasRss)             d.hasRss             = true;
-        if (editorialProbe?.about    && !d.hasAbout)           d.hasAbout           = true;
-        if (editorialProbe?.editorial && !d.hasEditorialPolicy) d.hasEditorialPolicy = true;
-        if (editorialProbe?.corrections && !d.hasCorrections)  d.hasCorrections     = true;
-        if (editorialProbe?.contact  && !d.hasContact)         d.hasContact         = true;
-        if (articleProbe?.hasBylines && !d.hasBylines)         d.hasBylines         = true;
-        if (articleProbe?.hasCorrections && !d.hasCorrections) d.hasCorrections     = true;
-        if (articleProbe?.hasContact && !d.hasContact)         d.hasContact         = true;
-        payload.domData = d;
-      }
+      const probeData = await startSignalProbes(payload.url);
+      payload.domData = upgradeDomSignals(payload.domData || {}, probeData);
     }
 
     const result = scoreFromSignals(payload);

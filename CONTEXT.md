@@ -88,7 +88,7 @@ Participation and editorial signals are extracted from three independent layers,
 2. **Hostname Signal Probes** — plain HTTP GETs to known institutional paths (`/rssfeeds/`, `/aboutus/`, `/values/`, etc.). Runs in parallel with browser navigation; bypasses Cloudflare JS challenges.
 3. **Article Signal Probe** — plain HTTP GET to the specific article URL. Extracts bylines, corrections links, and contact links from static HTML. Requires 200 KB body read.
 
-All three layers only **upgrade** signals — never downgrade. If the DOM finds bylines, the Article Signal Probe cannot un-find them.
+All three layers only **upgrade** signals — never downgrade. If the DOM finds bylines, the Article Signal Probe cannot un-find them. The probe layer — the SSRF-guarded fetch, the three probes, their scheduling (Article Signal Probe only on path depth ≥ 2), and this upgrade-only merge — lives in one module, `server/signalProbes.js`, used by both Analysis modes.
 
 **Bot Protection** (Cloudflare Bot Management):
 When a Publication serves a JS challenge page ("Just a moment…") to the headless browser, DOM-based scores are unreliable. The tool detects this and shows a warning. Signal Probes are unaffected and produce accurate participation signals regardless.
