@@ -2,6 +2,7 @@
 
 const { opennessGrade } = require('./openness');
 const { paywallGrade }  = require('./paywallAudit');
+const { gradeTier }     = require('./grades');
 
 // Clamp to 0–100.
 function clamp(n) { return Math.max(0, Math.min(100, Math.round(n))); }
@@ -273,18 +274,17 @@ function democraticInfrastructureScore(analysis) {
 
 // ── Grade helpers ─────────────────────────────────────────────────────────────
 
-// Reader-respect scale — DELIBERATELY DISTINCT from the OnlineJourno suite's
-// A-F table (grades.py / bands.json: 80/65/50/35). This tool grades reader
-// treatment, not editorial quality; its C/D boundaries (45/25) and labels
-// (Reader-Respecting ... Egregious) are its own, pinned by scoring.test.js.
-// Founder decision 2026-07-04 (checklist P2.2 option b). Do not "unify".
-function scoreGrade(score) {
-  if (score >= 80) return { grade: 'A', label: 'Reader-Respecting', colorClass: 'green'  };
-  if (score >= 65) return { grade: 'B', label: 'Moderate',          colorClass: 'lime'   };
-  if (score >= 45) return { grade: 'C', label: 'Concerning',        colorClass: 'amber'  };
-  if (score >= 25) return { grade: 'D', label: 'Exploitative',      colorClass: 'orange' };
-  return                   { grade: 'F', label: 'Egregious',         colorClass: 'red'    };
-}
+// Reader-respect labels — DELIBERATELY DISTINCT from the OnlineJourno suite's
+// (Reader-Respecting ... Egregious), pinned by scoring.test.js. The band cutoffs
+// live once in grades.js; this table only supplies the labels per tier.
+const SCORE_GRADES = [
+  { grade: 'A', label: 'Reader-Respecting', colorClass: 'green'  },
+  { grade: 'B', label: 'Moderate',          colorClass: 'lime'   },
+  { grade: 'C', label: 'Concerning',        colorClass: 'amber'  },
+  { grade: 'D', label: 'Exploitative',      colorClass: 'orange' },
+  { grade: 'F', label: 'Egregious',         colorClass: 'red'    },
+];
+function scoreGrade(score) { return SCORE_GRADES[gradeTier(score)]; }
 
 function dimensionLabel(key) {
   return {

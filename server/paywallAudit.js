@@ -1,5 +1,7 @@
 'use strict';
 
+const { gradeTier } = require('./grades');
+
 // ── Known paywall/subscription platform domains ───────────────────────────────
 // Grouped by how much reader surveillance they add beyond basic gating.
 const PAYWALL_PLATFORMS = [
@@ -292,12 +294,8 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
   };
 }
 
-function paywallGrade(score) {
-  if (score >= 80) return 'Respectful';
-  if (score >= 65) return 'Functional';
-  if (score >= 45) return 'Problematic';
-  if (score >= 25) return 'Reader-Hostile';
-  return 'Broken / Opaque';
-}
+// Band cutoffs owned by grades.js; paywallGrade keeps its bare-string interface.
+const PAYWALL_GRADE_LABELS = ['Respectful', 'Functional', 'Problematic', 'Reader-Hostile', 'Broken / Opaque'];
+function paywallGrade(score) { return PAYWALL_GRADE_LABELS[gradeTier(score)]; }
 
 module.exports = { auditPaywall, paywallGrade };

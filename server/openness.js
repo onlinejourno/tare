@@ -3,6 +3,7 @@
 const https = require('https');
 const http  = require('http');
 const { isPrivateHostname, guardedLookup } = require('./ssrfGuard');
+const { gradeTier } = require('./grades');
 
 // ── RSS HTTP probe (runs server-side, bypasses Cloudflare JS challenge) ────────
 // Tries common feed paths via plain HTTP GET — no headless browser needed.
@@ -675,14 +676,15 @@ function _scoreOpenness(dom, trackers) {
   };
 }
 
-// ── Grade (shared with infrastructure scoring) ────────────────────────────────
-function opennessGrade(score) {
-  if (score >= 80) return { grade: 'A', label: 'Open & Accountable',  colorClass: 'green'  };
-  if (score >= 65) return { grade: 'B', label: 'Partially Open',      colorClass: 'lime'   };
-  if (score >= 45) return { grade: 'C', label: 'Restricted',          colorClass: 'amber'  };
-  if (score >= 25) return { grade: 'D', label: 'Closed',              colorClass: 'orange' };
-  return                   { grade: 'F', label: 'Opaque & Gated',      colorClass: 'red'    };
-}
+// ── Grade (band cutoffs owned by grades.js; only labels differ) ───────────────
+const OPENNESS_GRADES = [
+  { grade: 'A', label: 'Open & Accountable', colorClass: 'green'  },
+  { grade: 'B', label: 'Partially Open',     colorClass: 'lime'   },
+  { grade: 'C', label: 'Restricted',         colorClass: 'amber'  },
+  { grade: 'D', label: 'Closed',             colorClass: 'orange' },
+  { grade: 'F', label: 'Opaque & Gated',     colorClass: 'red'    },
+];
+function opennessGrade(score) { return OPENNESS_GRADES[gradeTier(score)]; }
 
 // scoreOpenness is the single canonical Openness scorer. Both modes call it:
 // Headless via analyzeOpenness (above), Live Browser via score.js's adapter.
