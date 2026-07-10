@@ -45,6 +45,10 @@ _Avoid_: fallback, scrape, HTTP check
 The journalist or researcher who runs an Analysis using this tool.
 _Avoid_: user, operator, researcher (too generic)
 
+**Analysis Result**:
+The complete scored output of one Analysis — the analysis data plus Scores (Democratic Infrastructure Score, dimension grades, flags, the Openness and Paywall panels) and Recommendations. Assembled in exactly one place (`server/analysisResult.js`) regardless of mode; the mode-parity promise ("both modes produce the same structured score output") is a property of this seam, and `scores.mode` / `scores.missingSignals` record which mode produced it and what it couldn't measure.
+_Avoid_: result object, scored result, response shape
+
 ## Relationships
 
 - An **Analysis** targets one **Publication**
