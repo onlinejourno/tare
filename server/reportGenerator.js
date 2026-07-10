@@ -2,6 +2,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { scoreGrade, DIMENSION_META, PERF_TIERS } = require('./scoring');
 
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 
@@ -17,21 +18,15 @@ function fmt(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function scoreColor(s) {
-  if (s >= 80) return '#16a34a';
-  if (s >= 65) return '#65a30d';
-  if (s >= 45) return '#d97706';
-  if (s >= 25) return '#ea580c';
-  return '#dc2626';
-}
+// Grade bands and labels come from scoring.scoreGrade — this file only maps
+// the colorClass names onto report hex values.
+const GRADE_HEX = {
+  green: '#16a34a', lime: '#65a30d', amber: '#d97706', orange: '#ea580c', red: '#dc2626',
+};
 
-function scoreLabel(s) {
-  if (s >= 80) return 'Reader-Respecting';
-  if (s >= 65) return 'Moderate';
-  if (s >= 45) return 'Concerning';
-  if (s >= 25) return 'Exploitative';
-  return 'Egregious';
-}
+function scoreColor(s) { return GRADE_HEX[scoreGrade(s).colorClass] || '#6b7280'; }
+
+function scoreLabel(s) { return scoreGrade(s).label; }
 
 function bar(pct, color = '#3b82f6', height = '10px') {
   return `<div style="background:#e5e7eb;border-radius:4px;height:${height};overflow:hidden">` +
@@ -59,19 +54,6 @@ const CAT_LABELS = {
   social_pixel: 'Social Pixel', ssp: 'SSP / RTB', advertising: 'Advertising',
   identity_resolution: 'Identity Resolution', data_broker: 'Data Broker',
   tag_manager: 'Tag Manager', ab_testing: 'A/B Testing', social: 'Social Embed', chat: 'Chat Widget',
-};
-
-const DIM_LABELS = {
-  surveillance: 'Surveillance', adTechDepth: 'Ad-Tech Depth',
-  consentIntegrity: 'Consent Integrity', pageBloat: 'Page Bloat', performance: 'Performance',
-};
-
-const DIM_DESCRIPTIONS = {
-  surveillance: 'Depth and severity of tracking apparatus deployed against readers',
-  adTechDepth: 'Participation in programmatic advertising / RTB ecosystem',
-  consentIntegrity: 'Honesty of the consent framework (pre-consent fires, CMP quality)',
-  pageBloat: 'Material weight of the page — access barrier for mobile users',
-  performance: 'Actual loading speed and interactivity impact',
 };
 
 function gaugesvg(score) {
@@ -107,14 +89,14 @@ function generateHtmlReport(data) {
 
   // ── Dimension score bars ──────────────────────────────────────────────────────
   const dims = scores.dimensions || {};
-  const dimRows = Object.entries(DIM_LABELS).map(([key, label]) => {
+  const dimRows = Object.entries(DIMENSION_META).map(([key, meta]) => {
     const s = dims[key] ?? 0;
     const col = scoreColor(s);
     return `<tr>
-      <td style="padding:.5rem .75rem;font-size:.85rem;font-weight:600;white-space:nowrap">${label}</td>
+      <td style="padding:.5rem .75rem;font-size:.85rem;font-weight:600;white-space:nowrap">${meta.label}</td>
       <td style="padding:.5rem .75rem;width:100%">
         ${bar(s, col, '12px')}
-        <div style="font-size:.75rem;color:#6b7280;margin-top:3px">${DIM_DESCRIPTIONS[key]}</div>
+        <div style="font-size:.75rem;color:#6b7280;margin-top:3px">${meta.description}</div>
       </td>
       <td style="padding:.5rem .75rem;font-size:.9rem;font-weight:700;color:${col};white-space:nowrap">${s}/100</td>
     </tr>`;
@@ -222,9 +204,11 @@ function generateHtmlReport(data) {
   let perfHtml = '';
   if (performanceMetrics) {
     const pm = performanceMetrics;
-    const lcpColor  = pm.lcp > 4000 ? '#dc2626' : pm.lcp > 2500 ? '#d97706' : '#16a34a';
-    const tbtColor  = pm.tbt > 600  ? '#dc2626' : pm.tbt > 300  ? '#d97706' : '#16a34a';
-    const ttfbColor = pm.ttfb > 1800? '#dc2626' : pm.ttfb > 800 ? '#d97706' : '#16a34a';
+    // amber once the scorer starts deducting (> tier[0]), red at the mid tier (> tier[1])
+    const tierColor = (v, [warn, bad]) => v > bad ? '#dc2626' : v > warn ? '#d97706' : '#16a34a';
+    const lcpColor  = tierColor(pm.lcp,  [PERF_TIERS.lcp[0],  PERF_TIERS.lcp[1]]);
+    const tbtColor  = tierColor(pm.tbt,  [PERF_TIERS.tbt[0],  PERF_TIERS.tbt[1]]);
+    const ttfbColor = tierColor(pm.ttfb, [PERF_TIERS.ttfb[0], PERF_TIERS.ttfb[1]]);
     perfHtml = `
     <h2 style="font-size:1.1rem;font-weight:700;margin:1.5rem 0 .75rem;border-bottom:2px solid #f3f4f6;padding-bottom:.4rem">
       ⚡ Performance Metrics
@@ -333,7 +317,7 @@ function generateHtmlReport(data) {
 
   <!-- 5-dimension scores -->
   <div class="card">
-    <h2 style="margin-bottom:.75rem">Five-Dimension Score Breakdown</h2>
+    <h2 style="margin-bottom:.75rem">Six-Dimension Score Breakdown</h2>
     <table>${dimRows}</table>
   </div>
 
@@ -423,4 +407,4 @@ function writeReports(jobId, data) {
   fs.writeFileSync(path.join(REPORTS_DIR, `${jobId}.html`), generateHtmlReport(data));
 }
 
-module.exports = { writeReports };
+module.exports = { writeReports, generateHtmlReport };
