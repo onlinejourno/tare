@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { isPrivateHostname, validateUrl, guardedLookup } = require('./ssrfGuard');
-const { probeRssFeeds } = require('./openness');
+const { probeRssFeeds } = require('./signalProbes');
 
 test('isPrivateHostname blocks private / loopback / metadata / CGNAT', () => {
   for (const h of [

@@ -4,7 +4,8 @@ const { chromium, errors: pwErrors } = require('playwright');
 const { isPrivateHostname } = require('./ssrfGuard');
 const { TRACKERS, GOOGLE_DOMAINS, CATEGORY_META } = require('./data/trackers');
 const { detectDarkPatterns, detectAdBlockerWall } = require('./darkPatterns');
-const { analyzeOpenness, probeRssFeeds, probeEditorialSignals, probeArticleSignals } = require('./openness');
+const { analyzeOpenness } = require('./openness');
+const { startSignalProbes } = require('./signalProbes');
 const { auditDataFlow } = require('./dataFlow');
 const { auditPaywall } = require('./paywallAudit');
 
@@ -271,16 +272,7 @@ async function analyzeUrl(url, emitProgress) {
 
     // All three probes fire via plain HTTP in parallel with browser navigation —
     // bypasses Cloudflare/WAF JS challenges that block the headless browser.
-    const rssProbePromise      = probeRssFeeds(pageHostname);
-    const editorialProbePromise = probeEditorialSignals(pageHostname);
-    // Article Signal Probe only runs on deep URLs (path depth ≥ 2) — homepage
-    // and section-front URLs have no bylines, so the 200 KB fetch adds nothing.
-    const urlPathDepth = (() => {
-      try { return new URL(url).pathname.split('/').filter(Boolean).length; } catch { return 0; }
-    })();
-    const articleProbePromise = urlPathDepth >= 2
-      ? probeArticleSignals(url)
-      : Promise.resolve({ hasBylines: false, hasCorrections: false, hasContact: false });
+    const signalProbesPromise = startSignalProbes(url);
 
     emitProgress('navigating', 15);
     navigationStartMs = Date.now();
@@ -443,14 +435,8 @@ async function analyzeUrl(url, emitProgress) {
     emitProgress('analyzing_openness', 88);
     const builtTrackers = [...trackerSet.values()];
     // All three probes started at navigation time — by now resolved or nearly so.
-    const [rssProbe, editorialProbe, articleProbe] = await Promise.all([
-      rssProbePromise, editorialProbePromise, articleProbePromise,
-    ]);
-    const opennessData = await analyzeOpenness(page, builtTrackers, {
-      rss:      rssProbe,
-      editorial: editorialProbe,
-      article:  articleProbe,
-    });
+    const probeData = await signalProbesPromise;
+    const opennessData = await analyzeOpenness(page, builtTrackers, probeData);
 
     emitProgress('auditing_data_flow', 91);
     const dataFlow = await auditDataFlow(page, allRequests, builtTrackers, pageHostname);
