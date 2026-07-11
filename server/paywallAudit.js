@@ -77,6 +77,62 @@ function getBaseUrl(url) {
   try { const u = new URL(url); return u.hostname + u.pathname; } catch { return url; }
 }
 
+// ── Pure paywall scoring ──────────────────────────────────────────────────────
+// The four sub-scores + composite, given already-derived signals. Pure (no page,
+// no network) so it can be unit-tested directly; auditPaywall gathers the inputs
+// (platform detection + a page.evaluate for domSignals) and delegates here.
+function scorePaywallDimensions({ paywallType, profilesPlatform, detectedSurveillance, totalPlatformCalls, duplicateCalls, domSignals }) {
+  // 1. Transparency — does the reader understand the paywall terms?
+  let transparency = 50;
+  if (domSignals.hasLoginLink)        transparency += 20;
+  if (domSignals.hasPricing)          transparency += 15;
+  if (domSignals.hasMeterCounter)     transparency += 10;
+  if (domSignals.hasGiftOption)       transparency += 5;
+  if (domSignals.hasManageSubscription) transparency += 5;
+  if (paywallType === WALL_TYPE.HARD)         transparency -= 20;
+  if (paywallType === WALL_TYPE.METERED)      transparency += 5;
+  if (profilesPlatform && detectedSurveillance.length > 0) transparency -= 15; // profiling undisclosed
+  transparency = Math.max(0, Math.min(100, transparency));
+
+  // 2. Technical hygiene — is the implementation clean and proportionate?
+  let hygiene = 100;
+  if (totalPlatformCalls > 25)        hygiene -= 35;
+  else if (totalPlatformCalls > 15)   hygiene -= 20;
+  else if (totalPlatformCalls > 8)    hygiene -= 10;
+  else if (totalPlatformCalls > 4)    hygiene -= 5;
+  hygiene -= Math.min(30, duplicateCalls.length * 12);
+  hygiene -= Math.min(15, detectedSurveillance.length * 5);
+  hygiene = Math.max(0, Math.min(100, hygiene));
+
+  // 3. Reader respect — does the implementation treat readers fairly?
+  let readerRespect = 80;
+  if (paywallType === WALL_TYPE.HARD)              readerRespect -= 40;
+  else if (paywallType === WALL_TYPE.REGISTRATION) readerRespect -= 20;
+  if (profilesPlatform)                    readerRespect -= 15;
+  if (detectedSurveillance.some(s => s.pattern.includes('logAutoMicroConversion')))
+                                           readerRespect -= 10;
+  if (domSignals.visibleArticleParagraphs < 3 && paywallType !== WALL_TYPE.NONE)
+                                           readerRespect -= 15;
+  readerRespect = Math.max(0, Math.min(100, readerRespect));
+
+  // 4. Performance — what is the network overhead of the paywall stack?
+  let performance = 100;
+  if (totalPlatformCalls > 25)        performance -= 35;
+  else if (totalPlatformCalls > 15)   performance -= 20;
+  else if (totalPlatformCalls > 8)    performance -= 10;
+  else if (totalPlatformCalls > 3)    performance -= 5;
+  performance = Math.max(0, Math.min(100, performance));
+
+  const composite = Math.max(0, Math.min(100, Math.round(
+    transparency  * 0.30 +
+    hygiene       * 0.35 +
+    readerRespect * 0.25 +
+    performance   * 0.10
+  )));
+
+  return { transparency, hygiene, readerRespect, performance, composite };
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 async function auditPaywall(page, allRequests, trackers, opennessSignals) {
@@ -171,55 +227,9 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
     }, PAYWALL_SELECTORS, LOGIN_SELECTORS);
   } catch {}
 
-  // ── Scoring ───────────────────────────────────────────────────────────────
-
-  // 1. Transparency — does the reader understand the paywall terms?
-  let transparency = 50;
-  if (domSignals.hasLoginLink)        transparency += 20;
-  if (domSignals.hasPricing)          transparency += 15;
-  if (domSignals.hasMeterCounter)     transparency += 10;
-  if (domSignals.hasGiftOption)       transparency += 5;
-  if (domSignals.hasManageSubscription) transparency += 5;
-  if (paywallType === WALL_TYPE.HARD)         transparency -= 20;
-  if (paywallType === WALL_TYPE.METERED)      transparency += 5;
-  if (profilesPlatform && detectedSurveillance.length > 0) transparency -= 15; // profiling undisclosed
-  transparency = Math.max(0, Math.min(100, transparency));
-
-  // 2. Technical hygiene — is the implementation clean and proportionate?
-  let hygiene = 100;
-  if (totalPlatformCalls > 25)        hygiene -= 35;
-  else if (totalPlatformCalls > 15)   hygiene -= 20;
-  else if (totalPlatformCalls > 8)    hygiene -= 10;
-  else if (totalPlatformCalls > 4)    hygiene -= 5;
-  hygiene -= Math.min(30, duplicateCalls.length * 12);
-  hygiene -= Math.min(15, detectedSurveillance.length * 5);
-  hygiene = Math.max(0, Math.min(100, hygiene));
-
-  // 3. Reader respect — does the implementation treat readers fairly?
-  let readerRespect = 80;
-  if (paywallType === WALL_TYPE.HARD)              readerRespect -= 40;
-  else if (paywallType === WALL_TYPE.REGISTRATION) readerRespect -= 20;
-  if (profilesPlatform)                    readerRespect -= 15;
-  if (detectedSurveillance.some(s => s.pattern.includes('logAutoMicroConversion')))
-                                           readerRespect -= 10;
-  if (domSignals.visibleArticleParagraphs < 3 && paywallType !== WALL_TYPE.NONE)
-                                           readerRespect -= 15;
-  readerRespect = Math.max(0, Math.min(100, readerRespect));
-
-  // 4. Performance — what is the network overhead of the paywall stack?
-  let performance = 100;
-  if (totalPlatformCalls > 25)        performance -= 35;
-  else if (totalPlatformCalls > 15)   performance -= 20;
-  else if (totalPlatformCalls > 8)    performance -= 10;
-  else if (totalPlatformCalls > 3)    performance -= 5;
-  performance = Math.max(0, Math.min(100, performance));
-
-  const composite = Math.max(0, Math.min(100, Math.round(
-    transparency  * 0.30 +
-    hygiene       * 0.35 +
-    readerRespect * 0.25 +
-    performance   * 0.10
-  )));
+  // ── Scoring (pure — no page) ──────────────────────────────────────────────
+  const { transparency, hygiene, readerRespect, performance, composite } =
+    scorePaywallDimensions({ paywallType, profilesPlatform, detectedSurveillance, totalPlatformCalls, duplicateCalls, domSignals });
 
   // ── Privacy / reader rights issues ────────────────────────────────────────
   const privacyIssues = [];
@@ -299,4 +309,4 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
 const PAYWALL_GRADE_LABELS = ['Respectful', 'Functional', 'Problematic', 'Reader-Hostile', 'Broken / Opaque'];
 function paywallGrade(score) { return PAYWALL_GRADE_LABELS[gradeTier(score)]; }
 
-module.exports = { auditPaywall, paywallGrade };
+module.exports = { auditPaywall, scorePaywallDimensions, paywallGrade };
