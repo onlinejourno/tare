@@ -186,6 +186,14 @@ function pageBloatScore(analysis) {
 // Vitals create a double-bind — the same company whose ad ecosystem causes
 // the bloat also runs the algorithm that penalises sites for it.
 
+// Performance thresholds — [ok-above, degraded-above, severe-above] per metric.
+// Single source for the scorer below AND report presentation colors.
+const PERF_TIERS = {
+  lcp:  [2500, 4000, 6000],   // Largest Contentful Paint (ms)
+  tbt:  [200, 400, 800],      // Total Blocking Time (ms)
+  ttfb: [600, 1000, 2000],    // Time to First Byte (ms)
+};
+
 function performanceImpactScore(analysis) {
   let score = 100;
   const pm = analysis.performanceMetrics;
@@ -193,23 +201,23 @@ function performanceImpactScore(analysis) {
 
   // LCP (Largest Contentful Paint) — main article headline/image load time
   if (pm.lcp !== null) {
-    if      (pm.lcp > 6000) score -= 35;
-    else if (pm.lcp > 4000) score -= 25;
-    else if (pm.lcp > 2500) score -= 12;
+    if      (pm.lcp > PERF_TIERS.lcp[2]) score -= 35;
+    else if (pm.lcp > PERF_TIERS.lcp[1]) score -= 25;
+    else if (pm.lcp > PERF_TIERS.lcp[0]) score -= 12;
   }
 
   // TBT (Total Blocking Time) — how long ad/tracker scripts block interactivity
   if (pm.tbt !== null) {
-    if      (pm.tbt > 800)  score -= 25;
-    else if (pm.tbt > 400)  score -= 15;
-    else if (pm.tbt > 200)  score -= 8;
+    if      (pm.tbt > PERF_TIERS.tbt[2]) score -= 25;
+    else if (pm.tbt > PERF_TIERS.tbt[1]) score -= 15;
+    else if (pm.tbt > PERF_TIERS.tbt[0]) score -= 8;
   }
 
   // TTFB (Time to First Byte) — server response speed
   if (pm.ttfb !== null) {
-    if      (pm.ttfb > 2000) score -= 20;
-    else if (pm.ttfb > 1000) score -= 10;
-    else if (pm.ttfb > 600)  score -= 5;
+    if      (pm.ttfb > PERF_TIERS.ttfb[2]) score -= 20;
+    else if (pm.ttfb > PERF_TIERS.ttfb[1]) score -= 10;
+    else if (pm.ttfb > PERF_TIERS.ttfb[0]) score -= 5;
   }
 
   return clamp(score);
@@ -283,17 +291,41 @@ function scoreGrade(score) {
   return                   { grade: 'F', label: 'Egregious',         colorClass: 'red'    };
 }
 
+// The six dimensions of the Democratic Infrastructure Score — display order,
+// labels, and descriptions. Single source for every consumer (report, UI copy).
+// Keys match democraticInfrastructureScore().dimensions exactly.
+const DIMENSION_META = {
+  surveillance: {
+    label: 'Surveillance',
+    description: 'Depth and severity of tracking apparatus deployed against readers',
+  },
+  adTechDepth: {
+    label: 'Ad-Tech Depth',
+    description: 'Participation in programmatic advertising / RTB ecosystem',
+  },
+  pageBloat: {
+    label: 'Page Bloat',
+    description: 'Material weight of the page — access barrier for mobile users',
+  },
+  consentPaywallIntegrity: {
+    label: 'Consent & Paywall Integrity',
+    description: 'Honesty at the consent UI and the paywall gate readers face',
+  },
+  openness: {
+    label: 'Openness',
+    description: 'Free access, participation infrastructure, and AI editorial control',
+  },
+  performance: {
+    label: 'Performance',
+    description: 'Actual loading speed and interactivity impact',
+  },
+};
+
 function dimensionLabel(key) {
-  return {
-    surveillance:             'Surveillance',
-    adTechDepth:              'Ad-Tech Depth',
-    consentPaywallIntegrity:  'Consent & Paywall Integrity',
-    pageBloat:                'Page Bloat',
-    openness:                 'Openness',
-    performance:              'Performance',
-    // Legacy key — kept for report generator compatibility
-    consentIntegrity:         'Consent Integrity',
-  }[key] || key;
+  if (DIMENSION_META[key]) return DIMENSION_META[key].label;
+  // Legacy key — kept for old stored results
+  if (key === 'consentIntegrity') return 'Consent Integrity';
+  return key;
 }
 
 // ── Flags (badges shown on dashboard) ────────────────────────────────────────
@@ -389,6 +421,8 @@ module.exports = {
   scoreGrade,
   dimensionLabel,
   computeFlags,
+  DIMENSION_META,
+  PERF_TIERS,
   // Legacy aliases
   pageHealthScore:      pageBloatScore,
   privacyScore:         surveillanceScore,
