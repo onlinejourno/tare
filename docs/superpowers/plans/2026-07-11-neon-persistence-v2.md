@@ -591,7 +591,7 @@ pg-mem emulates a subset of Postgres. Known-risky constructs used here and the v
 - `BIGSERIAL` — supported. (Chose over `GENERATED ... IDENTITY`, which pg-mem historically rejects.)
 - `JSONB` + `JSON.stringify` param — supported; reads back parsed.
 - `ON CONFLICT (run_id) DO UPDATE` — supported (requires the `UNIQUE` on `run_id`, which we declare).
-- Correlated subquery in `listPublications` — supported.
+- Correlated subquery in `listPublications` — NOT supported by pg-mem 3.x (fails with `column "analyses.hostname" does not exist`). `listPublications` therefore uses a non-correlated JOIN to a per-hostname `MAX(analysed_at)` derived table, verified equivalent on both pg-mem and real Neon.
 - `ORDER BY ... ASC NULLS LAST` — supported.
 - `COUNT(*)` returns string → coerced with `Number()` (both pg and pg-mem).
 
