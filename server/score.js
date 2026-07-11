@@ -14,6 +14,7 @@
 
 const { democraticInfrastructureScore, computeFlags, assembleScores } = require('./scoring');
 const { scoreOpenness } = require('./openness');
+const { WALL_TYPE } = require('./signals');
 const { generateRecommendations } = require('./recommendations');
 
 // Hostname suffix match — "sub.doubleclick.net" matches "doubleclick.net";
@@ -138,8 +139,8 @@ function scoreFromSignals(payload) {
   const openness = scoreOpenness(_opennessDom(domData), _opennessTrackers(domData, trackers));
 
   // ── Paywall audit — minimal shape from domData ───────────────────────────
-  const wallType = domData.paywallType || 'none';
-  const paywallAudit = wallType !== 'none'
+  const wallType = domData.paywallType || WALL_TYPE.NONE;
+  const paywallAudit = wallType !== WALL_TYPE.NONE
     ? {
         score:            domData.paywallScore           ?? 50,
         platform:         domData.paywallPlatform        ?? 'unknown',
@@ -201,13 +202,13 @@ function scoreFromSignals(payload) {
 // so Live Browser and Headless run identical scoring logic.
 
 function _opennessDom(domData) {
-  const wall = domData.paywallType || 'none';
+  const wall = domData.paywallType || WALL_TYPE.NONE;
   return {
     // Wall type is carried by which array is non-empty (openness.js reads .length).
     paywallEls:     [],
-    hardPaywall:    wall === 'hard'         ? ['live-browser: hard paywall']   : [],
-    meteredPaywall: wall === 'metered'      ? ['live-browser: metered wall']   : [],
-    regWall:        wall === 'registration' ? ['live-browser: registration']   : [],
+    hardPaywall:    wall === WALL_TYPE.HARD         ? ['live-browser: hard paywall'] : [],
+    meteredPaywall: wall === WALL_TYPE.METERED      ? ['live-browser: metered wall'] : [],
+    regWall:        wall === WALL_TYPE.REGISTRATION ? ['live-browser: registration'] : [],
     // Participation / accessibility booleans (absent Live Browser signals stay false).
     hasRss:             !!domData.hasRss,
     hasBylines:         !!domData.hasBylines,

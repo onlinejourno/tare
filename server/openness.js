@@ -4,6 +4,7 @@ const https = require('https');
 const http  = require('http');
 const { isPrivateHostname, guardedLookup } = require('./ssrfGuard');
 const { gradeTier } = require('./grades');
+const { AI_SIGNAL, WALL_TYPE } = require('./signals');
 
 // ── RSS HTTP probe (runs server-side, bypasses Cloudflare JS challenge) ────────
 // Tries common feed paths via plain HTTP GET — no headless browser needed.
@@ -487,19 +488,19 @@ function _scoreOpenness(dom, trackers) {
   // ── Dimension 1: Access (35%) ─────────────────────────────────────────────
   // Is journalism freely available to all, or gated behind money or data?
   let accessScore = 100;
-  let wallType    = 'none';
+  let wallType    = WALL_TYPE.NONE;
   let wallSignals = [];
 
   if (dom.paywallEls.length > 0 || dom.hardPaywall.length >= 1) {
-    wallType    = 'hard';
+    wallType    = WALL_TYPE.HARD;
     wallSignals = dom.hardPaywall;
     accessScore -= 60;
   } else if (dom.meteredPaywall.length >= 1) {
-    wallType    = 'metered';
+    wallType    = WALL_TYPE.METERED;
     wallSignals = dom.meteredPaywall;
     accessScore -= 30; // Legitimate but restricts access
   } else if (dom.regWall.length >= 1) {
-    wallType    = 'registration';
+    wallType    = WALL_TYPE.REGISTRATION;
     wallSignals = dom.regWall;
     accessScore -= 18; // Free, but trades data for access
   }
@@ -580,7 +581,7 @@ function _scoreOpenness(dom, trackers) {
   if (hasAlgoRecs) {
     aiScore -= 35;
     aiSignals.push({
-      id: 'algo_recs', severity: 'high',
+      id: AI_SIGNAL.ALGO_RECS, severity: 'high',
       label: 'Algorithmic Content Recommendations',
       note: 'Taboola/Outbrain-style "Recommended" widgets determine what readers see next — editorial curation replaced by engagement maximisation, typically surfacing the most sensational or emotionally triggering content.',
     });
@@ -588,7 +589,7 @@ function _scoreOpenness(dom, trackers) {
   if (hasPersonalisation) {
     aiScore -= 22;
     aiSignals.push({
-      id: 'personalisation', severity: 'high',
+      id: AI_SIGNAL.PERSONALISATION, severity: 'high',
       label: 'AI Personalisation Engine',
       note: 'Content presentation is dynamically adjusted per reader profile. No two readers see the same editorial environment — the publication becomes a different newspaper for every person.',
     });
@@ -596,7 +597,7 @@ function _scoreOpenness(dom, trackers) {
   if (hasAiPaywall) {
     aiScore -= 18;
     aiSignals.push({
-      id: 'ai_paywall', severity: 'medium',
+      id: AI_SIGNAL.AI_PAYWALL, severity: 'medium',
       label: 'Predictive Paywall (Piano / Zephr)',
       note: 'A machine-learning model decides when to trigger the subscription wall based on each reader\'s predicted propensity to pay — different readers face different barriers to the same information.',
     });
@@ -604,7 +605,7 @@ function _scoreOpenness(dom, trackers) {
   if (hasHeadlineTesting) {
     aiScore -= 15;
     aiSignals.push({
-      id: 'headline_testing', severity: 'medium',
+      id: AI_SIGNAL.HEADLINE_TESTING, severity: 'medium',
       label: 'Headline A/B Testing',
       note: 'Different readers see different headlines for the same story. Click-rate metrics determine which version "wins", gradually shifting editorial voice toward engagement optimisation over clarity or accuracy.',
     });
@@ -612,7 +613,7 @@ function _scoreOpenness(dom, trackers) {
   if (dom.hasAlgoWidgets && !hasAlgoRecs) {
     aiScore -= 12;
     aiSignals.push({
-      id: 'algo_widgets', severity: 'medium',
+      id: AI_SIGNAL.ALGO_WIDGETS, severity: 'medium',
       label: 'Algorithmic Recommendation Widgets',
       note: 'Recommendation widgets detected in page DOM — adjacent content is surfaced algorithmically rather than through editorial curation.',
     });
@@ -620,21 +621,21 @@ function _scoreOpenness(dom, trackers) {
   if (hasEditorialAnalytics && !hasHeadlineTesting) {
     aiScore -= 8;
     aiSignals.push({
-      id: 'editorial_analytics', severity: 'low',
+      id: AI_SIGNAL.EDITORIAL_ANALYTICS, severity: 'low',
       label: 'Real-Time Editorial Analytics (Chartbeat/Parse.ly)',
       note: 'Real-time performance dashboards make article metrics visible to editors while they work — research shows this subtly shifts commissioning and headline decisions toward traffic maximisation.',
     });
   }
   if (dom.aiDisclosures.length > 0) {
     aiSignals.push({
-      id: 'ai_disclosure', severity: 'info',
+      id: AI_SIGNAL.AI_DISCLOSURE, severity: 'info',
       label: 'AI Content Disclosure Present',
       note: `Site discloses AI-generated or AI-assisted content: "${dom.aiDisclosures[0]}"`,
     });
   }
   if (aiSignals.length === 0) {
     aiSignals.push({
-      id: 'no_ai_detected', severity: 'positive',
+      id: AI_SIGNAL.NONE, severity: 'positive',
       label: 'No AI Editorial Systems Detected',
       note: 'No algorithmic recommendation, personalisation, or AI paywall systems found.',
     });

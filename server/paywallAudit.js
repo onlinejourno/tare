@@ -1,6 +1,7 @@
 'use strict';
 
 const { gradeTier } = require('./grades');
+const { WALL_TYPE } = require('./signals');
 
 // ── Known paywall/subscription platform domains ───────────────────────────────
 // Grouped by how much reader surveillance they add beyond basic gating.
@@ -80,7 +81,7 @@ function getBaseUrl(url) {
 
 async function auditPaywall(page, allRequests, trackers, opennessSignals) {
   // Openness signals name the wall-type field `wallType` (see openness.js).
-  const paywallType = opennessSignals?.wallType || 'none';
+  const paywallType = opennessSignals?.wallType || WALL_TYPE.NONE;
 
   // ── Platform detection ────────────────────────────────────────────────────
   const detectedPlatforms = new Map(); // domain → platform info
@@ -102,7 +103,7 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
   const hasAnyPaywallPlatform = detectedPlatforms.size > 0 || paywallTrackers.length > 0;
 
   // If no platform detected AND no paywall in content, skip this section
-  if (!hasAnyPaywallPlatform && paywallType === 'none') return null;
+  if (!hasAnyPaywallPlatform && paywallType === WALL_TYPE.NONE) return null;
 
   // Primary platform name (prefer Piano if present, else first detected)
   const platformList = [...detectedPlatforms.values()];
@@ -179,8 +180,8 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
   if (domSignals.hasMeterCounter)     transparency += 10;
   if (domSignals.hasGiftOption)       transparency += 5;
   if (domSignals.hasManageSubscription) transparency += 5;
-  if (paywallType === 'hard')         transparency -= 20;
-  if (paywallType === 'metered')      transparency += 5;
+  if (paywallType === WALL_TYPE.HARD)         transparency -= 20;
+  if (paywallType === WALL_TYPE.METERED)      transparency += 5;
   if (profilesPlatform && detectedSurveillance.length > 0) transparency -= 15; // profiling undisclosed
   transparency = Math.max(0, Math.min(100, transparency));
 
@@ -196,12 +197,12 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
 
   // 3. Reader respect — does the implementation treat readers fairly?
   let readerRespect = 80;
-  if (paywallType === 'hard')              readerRespect -= 40;
-  else if (paywallType === 'registration') readerRespect -= 20;
+  if (paywallType === WALL_TYPE.HARD)              readerRespect -= 40;
+  else if (paywallType === WALL_TYPE.REGISTRATION) readerRespect -= 20;
   if (profilesPlatform)                    readerRespect -= 15;
   if (detectedSurveillance.some(s => s.pattern.includes('logAutoMicroConversion')))
                                            readerRespect -= 10;
-  if (domSignals.visibleArticleParagraphs < 3 && paywallType !== 'none')
+  if (domSignals.visibleArticleParagraphs < 3 && paywallType !== WALL_TYPE.NONE)
                                            readerRespect -= 15;
   readerRespect = Math.max(0, Math.min(100, readerRespect));
 
@@ -263,7 +264,7 @@ async function auditPaywall(page, allRequests, trackers, opennessSignals) {
     });
   }
 
-  if (!domSignals.hasLoginLink && paywallType !== 'none') {
+  if (!domSignals.hasLoginLink && paywallType !== WALL_TYPE.NONE) {
     privacyIssues.push({
       severity: 'low',
       label: 'No clear subscriber sign-in path',

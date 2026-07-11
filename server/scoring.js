@@ -3,6 +3,7 @@
 const { opennessGrade } = require('./openness');
 const { paywallGrade }  = require('./paywallAudit');
 const { gradeTier }     = require('./grades');
+const { AI_SIGNAL, WALL_TYPE } = require('./signals');
 
 // Clamp to 0–100.
 function clamp(n) { return Math.max(0, Math.min(100, Math.round(n))); }
@@ -388,13 +389,13 @@ function computeFlags(analysis) {
   const aiSignals        = opennessSignals.aiSignals   || [];
   const paywallAuditData = analysis.paywallAudit;
 
-  if (aiSignals.some(s => s.id === 'algo_recs'))
+  if (aiSignals.some(s => s.id === AI_SIGNAL.ALGO_RECS))
     flags.push({ id: 'algo_recs',         label: 'Algorithmic Editorial',     severity: 'high',     icon: '🤖', note: 'Taboola/Outbrain-style widgets replace editorial curation with engagement-maximising algorithms' });
-  if (aiSignals.some(s => s.id === 'ai_paywall'))
+  if (aiSignals.some(s => s.id === AI_SIGNAL.AI_PAYWALL))
     flags.push({ id: 'predictive_paywall',label: 'Predictive Paywall',        severity: 'high',     icon: '🎯', note: 'ML model decides when to trigger subscription wall based on each reader\'s predicted propensity to pay' });
-  if (aiSignals.some(s => s.id === 'headline_testing'))
+  if (aiSignals.some(s => s.id === AI_SIGNAL.HEADLINE_TESTING))
     flags.push({ id: 'headline_testing',  label: 'Headline A/B Testing',      severity: 'medium',   icon: '🔀', note: 'Different readers see different headlines; click-rate metrics shift editorial voice toward engagement optimisation' });
-  if (opennessSignals.wallType === 'hard')
+  if (opennessSignals.wallType === WALL_TYPE.HARD)
     flags.push({ id: 'hard_paywall',      label: 'Hard Paywall',              severity: 'medium',   icon: '🔒', note: 'Journalism is inaccessible without a subscription — restricts democratic access to information' });
   if (opennessSignals.hasRss === false)
     flags.push({ id: 'no_rss',            label: 'No Open Feed',              severity: 'low',      icon: '📵', note: 'No RSS/Atom feed — readers must rely on platform algorithms to follow coverage' });
