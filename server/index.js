@@ -9,7 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const { analyzeUrl, classifyRequests } = require('./analyzer');
 const { scoreFromSignals } = require('./score');
-const { saveAnalysis } = require('./db');
+const { saveAnalysis, init: initDb } = require('./db');
 const { startSignalProbes, upgradeDomSignals } = require('./signalProbes');
 const { assembleAnalysisResult } = require('./analysisResult');
 const { writeReports } = require('./reportGenerator');
@@ -86,7 +86,7 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
       // Persist to SQLite index
       try {
         const cfBlocked = !!(rawResult.accessBlocked?.blocked);
-        saveAnalysis(jobId, url, 'headless', result, cfBlocked);
+        await saveAnalysis(jobId, url, 'headless', result, cfBlocked);
       } catch (dbErr) {
         console.warn('[db] persist failed (non-fatal):', dbErr.message);
       }
@@ -198,22 +198,22 @@ app.get('/api/download/:jobId/:format', readLimiter, async (req, res) => {
 });
 
 // ── GET /api/publications  (local index — all Publications, latest score) ─────
-app.get('/api/publications', (req, res) => {
+app.get('/api/publications', async (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: 'The publications index is local-only.' });
   const { listPublications } = require('./db');
   try {
-    res.json({ publications: listPublications() });
+    res.json({ publications: await listPublications() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ── GET /api/publications/:hostname  (history for one Publication) ────────────
-app.get('/api/publications/:hostname', (req, res) => {
+app.get('/api/publications/:hostname', async (req, res) => {
   if (!isLoopback(req)) return res.status(403).json({ error: 'The publications index is local-only.' });
   const { getPublicationHistory } = require('./db');
   try {
-    const history = getPublicationHistory(req.params.hostname);
+    const history = await getPublicationHistory(req.params.hostname);
     if (!history.length) return res.status(404).json({ error: 'No analyses found for this publication.' });
     res.json({ hostname: req.params.hostname, runs: history });
   } catch (err) {
@@ -287,7 +287,7 @@ app.post('/score', analyzeLimiter, async (req, res) => {
     const { v4: uuidv4 } = require('uuid');
     const runId = payload.runId || uuidv4();
     try {
-      saveAnalysis(runId, payload.url, 'live-browser', result);
+      await saveAnalysis(runId, payload.url, 'live-browser', result);
     } catch (dbErr) {
       console.warn('[db] persist failed (non-fatal):', dbErr.message);
     }
@@ -300,6 +300,13 @@ app.post('/score', analyzeLimiter, async (req, res) => {
 });
 
 // ── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Web Bloat Checker running at http://localhost:${PORT}`);
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Web Bloat Checker running at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('[tare] FATAL: database init failed:', err.message);
+    process.exit(1);
+  });
