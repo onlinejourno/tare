@@ -139,16 +139,17 @@ function createStore(opts = {}) {
 
   async function listPublications() {
     const { rows } = await pool.query(`
-      SELECT hostname,
-             COUNT(*)         AS run_count,
-             MAX(analysed_at) AS last_analysed,
-             score_overall, grade
-      FROM   analyses
-      WHERE  analysed_at = (
-        SELECT MAX(a2.analysed_at) FROM analyses a2 WHERE a2.hostname = analyses.hostname
-      )
-      GROUP BY hostname, score_overall, grade
-      ORDER BY score_overall ASC NULLS LAST
+      SELECT a.hostname,
+             COUNT(*)      AS run_count,
+             a.analysed_at AS last_analysed,
+             a.score_overall, a.grade
+      FROM analyses a
+      JOIN (
+        SELECT hostname, MAX(analysed_at) AS max_at
+        FROM analyses GROUP BY hostname
+      ) m ON a.hostname = m.hostname AND a.analysed_at = m.max_at
+      GROUP BY a.hostname, a.analysed_at, a.score_overall, a.grade
+      ORDER BY a.score_overall ASC NULLS LAST
     `);
     // Additive DTO + BIGINT run_count → Number for JSON parity.
     return rows.map(row => ({
