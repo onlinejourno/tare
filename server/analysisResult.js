@@ -59,12 +59,6 @@ function assembleAnalysisResult(analysis, { mode, missingSignals = [] }) {
         paywallGrade:      paywallGrade(pw.score),
         paywallDimensions: pw.dimensions,
       } : {}),
-      // Deprecated aliases — report generator still reads these; remove when
-      // the report moves to the six-dimension keys.
-      pageHealth: dis.dimensions.pageBloat,
-      pageHealthGrade: scoreGrade(dis.dimensions.pageBloat),
-      privacy: dis.dimensions.surveillance,
-      privacyGrade: scoreGrade(dis.dimensions.surveillance),
       // Analysis mode metadata — uniform across modes
       mode,
       missingSignals,

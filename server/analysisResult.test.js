@@ -60,10 +60,10 @@ describe('assembleAnalysisResult shape', () => {
     assert.deepEqual(withPw.scores.paywallDimensions, { transparency: 40 });
   });
 
-  test('deprecated aliases mirror the pageBloat and surveillance dimensions', () => {
+  test('legacy pageHealth/privacy aliases are gone (verified unread anywhere)', () => {
     const r = assembleAnalysisResult(cleanAnalysis(), { mode: 'headless' });
-    assert.equal(r.scores.pageHealth, r.scores.dimensions.pageBloat);
-    assert.equal(r.scores.privacy, r.scores.dimensions.surveillance);
+    assert.equal('pageHealth' in r.scores, false);
+    assert.equal('privacy' in r.scores, false);
   });
 });
 

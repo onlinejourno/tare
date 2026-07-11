@@ -150,6 +150,9 @@ function scoreFromSignals(payload) {
 
   // ── Assemble analysis object ─────────────────────────────────────────────
   const analysis = {
+    // Same meta shape as the Headless analyzer, so downstream consumers
+    // (report generator, export) can treat results uniformly.
+    meta: { url, mode, analyzedAt: new Date().toISOString(), durationMs: null },
     url,
     mode,
     trackers,

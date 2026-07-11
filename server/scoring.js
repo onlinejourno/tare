@@ -423,8 +423,4 @@ module.exports = {
   computeFlags,
   DIMENSION_META,
   PERF_TIERS,
-  // Legacy aliases
-  pageHealthScore:      pageBloatScore,
-  privacyScore:         surveillanceScore,
-  consentIntegrityScore: consentPaywallIntegrityScore,
 };

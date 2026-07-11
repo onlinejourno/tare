@@ -196,7 +196,13 @@ function createStore(dbPath = DEFAULT_DB_PATH) {
    * Does NOT parse full_result_json — fast for building the index.
    */
   function listPublications() {
-    return LIST_PUBLICATIONS.all();
+    // Additive DTO: camelCase alongside the legacy snake_case keys (see _parseRow).
+    return LIST_PUBLICATIONS.all().map(row => ({
+      ...row,
+      runCount:     row.run_count,
+      lastAnalysed: row.last_analysed,
+      scoreOverall: row.score_overall,
+    }));
   }
 
   /**
@@ -225,10 +231,24 @@ function _normalise(hostname) {
 
 function _parseRow(row) {
   return {
+    // Legacy snake_case keys — the published API contract consumed by the
+    // external OJDS frontend. Deprecated: prefer the camelCase fields below;
+    // remove the old keys once external consumers have migrated.
     ...row,
     cloudflare_blocked: row.cloudflare_blocked === 1,
     flags:  row.flags_json        ? JSON.parse(row.flags_json)        : [],
     result: row.full_result_json  ? JSON.parse(row.full_result_json)  : null,
+    // Domain-shaped fields (additive DTO)
+    runId:                row.run_id,
+    analysedAt:           row.analysed_at,
+    cloudflareBlocked:    row.cloudflare_blocked === 1,
+    scoreOverall:         row.score_overall,
+    scoreSurveillance:    row.score_surveillance,
+    scoreAdtech:          row.score_adtech,
+    scoreBloat:           row.score_bloat,
+    scoreConsentPaywall:  row.score_consent_paywall,
+    scoreOpenness:        row.score_openness,
+    scorePerformance:     row.score_performance,
   };
 }
 

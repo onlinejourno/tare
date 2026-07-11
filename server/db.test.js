@@ -84,3 +84,27 @@ describe('Analysis store (in-memory)', () => {
     assert.equal(store.getAnalysis('run-x').hostname, 'not a url');
   });
 });
+
+describe('additive DTO (camelCase alongside legacy snake_case)', () => {
+  test('parsed rows carry both key sets with equal values', () => {
+    const store = createStore(':memory:');
+    store.saveAnalysis('run-dto', 'https://www.example.com/story', 'headless', fixtureResult(), true);
+    const row = store.getAnalysis('run-dto');
+    assert.equal(row.runId, row.run_id);
+    assert.equal(row.analysedAt, row.analysed_at);
+    assert.equal(row.scoreOverall, row.score_overall);
+    assert.equal(row.scoreConsentPaywall, row.score_consent_paywall);
+    assert.equal(row.scoreOpenness, row.score_openness);
+    assert.equal(row.cloudflareBlocked, true);
+    assert.equal(row.cloudflare_blocked, true);
+  });
+
+  test('listPublications rows carry runCount/lastAnalysed/scoreOverall', () => {
+    const store = createStore(':memory:');
+    store.saveAnalysis('r1', 'https://example.com/', 'headless', fixtureResult());
+    const [pub] = store.listPublications();
+    assert.equal(pub.runCount, pub.run_count);
+    assert.equal(pub.lastAnalysed, pub.last_analysed);
+    assert.equal(pub.scoreOverall, pub.score_overall);
+  });
+});

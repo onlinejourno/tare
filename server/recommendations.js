@@ -133,7 +133,10 @@ function generateRecommendations(analysis) {
       severity: 'high',
       title: 'Google double-bind detected: ad tech causes bloat that Google\'s algorithm penalises',
       detail: `Google Tag Manager and Google Ad Manager are both present. ` +
-        `Google\'s advertising ecosystem accounts for ${googleAttribution.requestPercent}% of all requests and ${googleAttribution.bytesPercent}% of transferred bytes. ` +
+        // Live Browser mode has no per-request attribution — omit the numbers there.
+        (typeof googleAttribution.requestPercent === 'number'
+          ? `Google's advertising ecosystem accounts for ${googleAttribution.requestPercent}% of all requests and ${googleAttribution.bytesPercent}% of transferred bytes. `
+          : '') +
         'The same company whose ad exchange requires these scripts also runs Core Web Vitals — which penalises slow pages in search rankings. ' +
         'This is platform capture operating on both sides of the publisher\'s business simultaneously.',
       alternatives: [
