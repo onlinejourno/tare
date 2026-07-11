@@ -83,7 +83,7 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
       jobs.emitProgress(jobId, 'writing_reports', 95);
       writeReports(jobId, result);
 
-      // Persist to SQLite index
+      // Persist to the analyses index (Neon Postgres)
       try {
         const cfBlocked = !!(rawResult.accessBlocked?.blocked);
         await saveAnalysis(jobId, url, 'headless', result, cfBlocked);
@@ -283,7 +283,7 @@ app.post('/score', analyzeLimiter, async (req, res) => {
 
     const result = scoreFromSignals(payload);
 
-    // Persist to SQLite index
+    // Persist to the analyses index (Neon Postgres)
     const { v4: uuidv4 } = require('uuid');
     const runId = payload.runId || uuidv4();
     try {

@@ -3,7 +3,7 @@
 /**
  * Export pipeline — generates static JSON for the Analyst's website.
  *
- * Reads from local SQLite (source of truth), writes to /exports/:
+ * Reads from Neon Postgres (source of truth), writes to /exports/:
  *   index.json                   — all Publications, latest score each, sorted by score asc
  *   publications/<hostname>.json — full history for one Publication
  *
