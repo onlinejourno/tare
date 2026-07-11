@@ -32,7 +32,7 @@ function emitComplete(jobId, result) {
   job.status = 'complete';
   job.result = result;
   emitters.get(jobId)?.emit('complete', result);
-  setTimeout(() => cleanup(jobId), JOB_TTL_MS);
+  setTimeout(() => cleanup(jobId), JOB_TTL_MS).unref(); // don't hold the process open
 }
 
 function emitError(jobId, err) {
@@ -41,7 +41,7 @@ function emitError(jobId, err) {
   job.status = 'error';
   job.error = err.message;
   emitters.get(jobId)?.emit('error', { message: err.message });
-  setTimeout(() => cleanup(jobId), JOB_TTL_MS);
+  setTimeout(() => cleanup(jobId), JOB_TTL_MS).unref(); // don't hold the process open
 }
 
 function cleanup(jobId) {
@@ -49,4 +49,27 @@ function cleanup(jobId) {
   emitters.delete(jobId);
 }
 
-module.exports = { createJob, emitProgress, emitComplete, emitError, jobs, emitters };
+/** Job record for one Analysis run, or undefined. */
+function getJob(jobId) { return jobs.get(jobId); }
+
+/** EventEmitter for one Analysis run's progress stream, or undefined. */
+function getEmitter(jobId) { return emitters.get(jobId); }
+
+/**
+ * Number of Analyses currently occupying a slot — derived from the registry
+ * (pending or running), so concurrency state cannot drift from job state.
+ * A slot is taken by createJob and freed when emitComplete/emitError fires.
+ */
+function runningCount() {
+  let n = 0;
+  for (const job of jobs.values()) {
+    if (job.status === 'pending' || job.status === 'running') n++;
+  }
+  return n;
+}
+
+module.exports = {
+  createJob, emitProgress, emitComplete, emitError,
+  getJob, getEmitter, runningCount,
+  JOB_TTL_MS,
+};

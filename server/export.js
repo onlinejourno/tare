@@ -35,10 +35,10 @@ function exportAll() {
   // ── index.json ──────────────────────────────────────────────────────────
   const indexEntries = publications.map(row => ({
     hostname:      row.hostname,
-    score:         row.score_overall,
+    score:         row.scoreOverall,
     grade:         row.grade,
-    runCount:      row.run_count,
-    lastAnalysed:  row.last_analysed,
+    runCount:      row.runCount,
+    lastAnalysed:  row.lastAnalysed,
   }));
 
   const indexPayload = {
@@ -60,20 +60,20 @@ function exportAll() {
       hostname:  row.hostname,
       runCount:  history.length,
       runs: history.map(r => ({
-        runId:          r.run_id,
+        runId:          r.runId,
         url:            r.url,
         mode:           r.mode,
-        analysedAt:     r.analysed_at,
-        score:          r.score_overall,
+        analysedAt:     r.analysedAt,
+        score:          r.scoreOverall,
         grade:          r.grade,
-        cloudflareBlocked: r.cloudflare_blocked,
+        cloudflareBlocked: r.cloudflareBlocked,
         dimensions: {
-          surveillance:       r.score_surveillance,
-          adTechDepth:        r.score_adtech,
-          pageBloat:          r.score_bloat,
-          consentPaywall:     r.score_consent_paywall,
-          openness:           r.score_openness,
-          performance:        r.score_performance,
+          surveillance:       r.scoreSurveillance,
+          adTechDepth:        r.scoreAdtech,
+          pageBloat:          r.scoreBloat,
+          consentPaywall:     r.scoreConsentPaywall,
+          openness:           r.scoreOpenness,
+          performance:        r.scorePerformance,
         },
         flags: r.flags,
         // Full result available for report card rendering

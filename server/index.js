@@ -20,8 +20,6 @@ app.set('trust proxy', 1); // one proxy (Fly) in front — trust it so req.ip is
 const PORT = process.env.PORT || 3000;
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 const MAX_CONCURRENT = 3;
-const JOB_FILE_TTL_MS = 10 * 60 * 1000; // match jobs.js JOB_TTL_MS
-let activeJobs = 0;
 
 fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
@@ -55,7 +53,7 @@ const readLimiter = rateLimit({
 
 // ── POST /api/analyze ────────────────────────────────────────────────────────
 app.post('/api/analyze', analyzeLimiter, async (req, res) => {
-  if (activeJobs >= MAX_CONCURRENT) {
+  if (jobs.runningCount() >= MAX_CONCURRENT) {
     return res.status(429).json({ error: 'Too many analyses in progress. Try again shortly.' });
   }
 
@@ -70,8 +68,8 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
   jobs.createJob(jobId);
   res.json({ jobId });
 
-  activeJobs++;
-  // Fire-and-forget — do not await
+  // Fire-and-forget — do not await. The concurrency slot is held by the job
+  // registry itself (createJob above) and freed when emitComplete/emitError fires.
   (async () => {
     try {
       const rawResult = await analyzeUrl(url, (stage, percent) => {
@@ -97,14 +95,12 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
         ['json', 'html'].forEach(ext =>
           fs.unlink(path.join(REPORTS_DIR, `${jobId}.${ext}`), () => {})
         );
-      }, JOB_FILE_TTL_MS);
+      }, jobs.JOB_TTL_MS);
 
       jobs.emitComplete(jobId, result);
     } catch (err) {
       console.error('[analyzer error]', err);
       jobs.emitError(jobId, err);
-    } finally {
-      activeJobs--;
     }
   })();
 });
@@ -123,7 +119,7 @@ app.get('/api/progress/:jobId', readLimiter, (req, res) => {
   // SSE comment as initial flush / keepalive
   res.write(': connected\n\n');
 
-  const job = jobs.jobs.get(jobId);
+  const job = jobs.getJob(jobId);
   if (!job) {
     res.write(`event: error\ndata: ${JSON.stringify({ message: 'Job not found' })}\n\n`);
     return res.end();
@@ -139,7 +135,7 @@ app.get('/api/progress/:jobId', readLimiter, (req, res) => {
     return res.end();
   }
 
-  const emitter = jobs.emitters.get(jobId);
+  const emitter = jobs.getEmitter(jobId);
   if (!emitter) {
     res.write(`event: error\ndata: ${JSON.stringify({ message: 'Emitter not found' })}\n\n`);
     return res.end();
@@ -164,7 +160,7 @@ app.get('/api/progress/:jobId', readLimiter, (req, res) => {
 // SSE doesn't survive a proxy/rewrite reliably, so the OJDS front-end polls this
 // instead. Returns the same job state the SSE stream carries.
 app.get('/api/result/:jobId', readLimiter, (req, res) => {
-  const job = jobs.jobs.get(req.params.jobId);
+  const job = jobs.getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json({
     status: job.status,
