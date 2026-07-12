@@ -3,7 +3,7 @@
 /**
  * Export pipeline — generates static JSON for the Analyst's website.
  *
- * Reads from local SQLite (source of truth), writes to /exports/:
+ * Reads from Neon Postgres (source of truth), writes to /exports/:
  *   index.json                   — all Publications, latest score each, sorted by score asc
  *   publications/<hostname>.json — full history for one Publication
  *
@@ -26,10 +26,10 @@ const PUBS_DIR    = path.join(EXPORTS_DIR, 'publications');
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-function exportAll() {
+async function exportAll() {
   fs.mkdirSync(PUBS_DIR, { recursive: true });
 
-  const publications = listPublications();
+  const publications = await listPublications();
   const generatedAt  = new Date().toISOString();
 
   // ── index.json ──────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ function exportAll() {
   // ── publications/<hostname>.json ─────────────────────────────────────────
   let pubCount = 0;
   for (const row of publications) {
-    const history = getPublicationHistory(row.hostname);
+    const history = await getPublicationHistory(row.hostname);
 
     const pubPayload = {
       generatedAt,
@@ -96,7 +96,7 @@ function _write(filePath, data) {
 // ── CLI entry point ──────────────────────────────────────────────────────────
 
 if (require.main === module) {
-  exportAll();
+  exportAll().catch((err) => { console.error('[export] failed:', err.message); process.exit(1); });
 }
 
 module.exports = { exportAll };

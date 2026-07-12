@@ -39,6 +39,10 @@ Reports are kept for 10 minutes then cleaned up automatically.
 
 This tool runs entirely on your own machine. No data is sent anywhere except to the URL you choose to analyze. The tracker database is embedded in the source — no external list fetching at runtime.
 
+## Persistence
+
+Analyses are stored in Neon Postgres (`DATABASE_URL`, pooled). Schema auto-creates at boot. `npm test` needs no DB (uses pg-mem).
+
 ## Architecture
 
 ```
