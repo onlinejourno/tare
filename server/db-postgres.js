@@ -19,7 +19,7 @@ const { Pool } = require('pg');
 function createStore(opts = {}) {
   const pool = opts.pool || new Pool({
     connectionString: opts.connectionString || process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: true },
     max: 5,
     idleTimeoutMillis: 30_000,
   });
