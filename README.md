@@ -1,4 +1,4 @@
-# Web Bloat Checker
+# Tare
 
 Analyze any web page for unnecessary code, surveillance trackers, unused JavaScript & CSS, and asset bloat. Generates a self-contained HTML report and a machine-readable JSON report.
 
@@ -74,7 +74,7 @@ This is one of [OnlineJourno](https://onlinejourno.com)'s **fully open-source** 
 
 MIT — fully open source, use it freely. See [LICENSE.md](LICENSE.md).
 
-**Maturity:** live. Solid: SSRF guard, 109-test suite incl. golden band/detector tests. Rough: Tare rename pending; openness audit missing from README (P5.13).
+**Maturity:** live. Solid: SSRF guard, 180-test suite incl. golden band/detector tests. Rough: openness audit missing from README (P5.13).
 
 Suite licensing: Source-available under FSL-1.1; converts to Apache 2.0 after two years. The free tools (Tare, Crawl-Budget Analyser) are MIT. Pulse is a proprietary showcase of the engine.
 
