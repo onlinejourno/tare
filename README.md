@@ -21,6 +21,15 @@ npm start
 # Open http://localhost:3000
 ```
 
+## Self-host with Docker Compose
+
+```bash
+docker compose up --build
+# Open http://localhost:3000
+```
+
+By default the Compose file runs Tare without an external database (`TARE_ALLOW_NO_DB=1`). History is not persisted. To enable persistence, set `DATABASE_URL` to a Postgres connection string in your environment or `.env` file.
+
 ## Requirements
 
 - Node.js 18+

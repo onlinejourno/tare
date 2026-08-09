@@ -1,0 +1,17 @@
+# Self-host Tare with Docker Compose.
+# Quick start: docker compose up --build
+# Then open http://localhost:3000
+
+name: tare
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PORT: "3000"
+      TARE_ALLOW_NO_DB: "1"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
