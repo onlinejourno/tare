@@ -4,9 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Digital Mirror — Page Accountability Tool</title>
+
+  <!-- OJDS: the shared look, single-sourced from WordPress. Never a copy.
+       Loaded before the app's own sheet so tokens are available to it. -->
+  <link rel="preconnect" href="https://onlinejourno.com">
+  <link rel="stylesheet" href="https://onlinejourno.com/brand/v1/tokens.css">
+  <link rel="stylesheet" href="https://onlinejourno.com/brand/v1/chrome.css">
+  <!-- One canonical per thing, and it is never the app. -->
+  <link rel="canonical" href="https://onlinejourno.com/suite/tare/">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-slot="7">
+
+  <!-- OJDS masthead — markup only; every colour/size comes from chrome.css.
+       Nav mirrors /brand/registry.json; regenerate if the registry changes. -->
+  <header class="oj-masthead">
+    <div class="oj-masthead__inner">
+      <a class="oj-lockup" href="https://onlinejourno.com" rel="home">
+        <img src="https://onlinejourno.com/brand/logo.png" width="1380" height="1054" alt="" aria-hidden="true">
+        <span>
+          <span class="oj-wordmark">OnlineJourno<b>.</b></span>
+          <span class="oj-lockup__sub">Digital newsrooms · since 2000</span>
+        </span>
+      </a>
+      <details class="oj-navbox" open>
+        <summary aria-label="Menu">
+          <svg width="21" height="15" viewBox="0 0 21 15" aria-hidden="true" focusable="false">
+            <path d="M0 1h21M0 7.5h21M0 14h21" stroke="currentColor" stroke-width="1.5" fill="none"></path>
+          </svg>
+        </summary>
+        <nav class="oj-nav" aria-label="Primary">
+          <a class="oj-nav__pulse" href="https://onlinejourno.com/in/">Pulse</a>
+          <a href="https://onlinejourno.com/suite/">Suite</a>
+          <a href="https://onlinejourno.com/watches/">Watches</a>
+          <a href="https://onlinejourno.com/tools/" aria-current="page">Free tools</a>
+          <a href="https://onlinejourno.com/jato/">JATO</a>
+          <a href="https://onlinejourno.com/docs/">Docs</a>
+          <a href="https://onlinejourno.com/about/">About</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  <div class="oj-spectrum" role="presentation"></div>
 
   <header class="site-header">
     <div class="header-inner">
@@ -211,6 +250,23 @@
 
     </section>
   </main>
+
+  <!-- OJDS colophon — shared footer, styled entirely by chrome.css. -->
+  <footer class="oj-footer">
+    <div class="oj-footer__inner">
+      <div class="oj-colophon">
+        <img src="https://onlinejourno.com/brand/logo.png" width="1380" height="1054" alt="" aria-hidden="true">
+        <div>
+          <h2>The colophon</h2>
+          <p>OnlineJourno is the software arm of <a href="https://onlinejournalism.in/">OnlineJournalism.in</a> — India’s reference for digital journalism, published continuously since 2000. Same author, same bias: reporter-first, vendor-neutral.</p>
+        </div>
+      </div>
+      <div class="oj-footer__legal">
+        <span>© 2026 OnlineJourno · A platform by journalists, for journalists</span>
+        <span class="oj-mono">Tare · MIT · no trackers on this page</span>
+      </div>
+    </div>
+  </footer>
 
   <script src="app.js"></script>
 </body>

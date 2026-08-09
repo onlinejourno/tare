@@ -20,6 +20,7 @@
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.10",
     "jsdom": "^29.1.1",
+    "knip": "^6.32.0",
     "pg-mem": "^3.0.14"
   },
   "license": "MIT"
