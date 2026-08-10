@@ -1,12 +1,20 @@
 # Generated-but-Unused Code Audit — Tare
 
+> **Correction (2026-08-08, founder):** the repo model in the original version of
+> this doc was backwards. **`onlinejourno/tare-dev` (private) is the active
+> development line; `onlinejourno/tare` (public) is published from it** — the
+> standard private-first pair. `tare-dev` is **not** deprecated or archived. The
+> code/doc cleanup findings below still stand (dead code removed, docs brought
+> current, `knip` in CI); only the "archive tare-dev / all future dev on public
+> tare" framing is superseded.
+
 **Date:** 2026-08-08  
-**Scope:** Consolidation of `onlinejourno/tare-dev` (private, now archived) into canonical `onlinejourno/tare` (public).  
-**Goal:** Remove dead code, unused files, duplicated documentation, and stale configuration; ensure the canonical repo ships only what is built, tested, and used.
+**Scope:** Dead-code and stale-config cleanup of the public `onlinejourno/tare` repo, bringing its docs current with the private `onlinejourno/tare-dev` dev line.  
+**Goal:** Remove dead code, unused files, duplicated documentation, and stale configuration; ensure the public repo ships only what is built, tested, and used.
 
 ## Background
 
-Tare (formerly packaged as `web-bloat-checker`) is one of OnlineJourno’s two MIT-licensed open-source tools. A parallel private repo (`tare-dev`) had accumulated experimental changes, docs, and configuration drift. The decision was made to consolidate all future development into the public `onlinejourno/tare` repository and archive `tare-dev`.
+Tare (formerly packaged as `web-bloat-checker`) is one of OnlineJourno’s two MIT-licensed open-source tools. Development happens on the private `onlinejourno/tare-dev` line; the public `onlinejourno/tare` repo is published from it and had accumulated some drift (stale name in deploy config, docs behind the dev line). This pass cleans that drift on the public repo and ports the current docs across.
 
 This document records the generated-but-unused code audit performed during that consolidation.
 
@@ -64,10 +72,11 @@ This document records the generated-but-unused code audit performed during that 
 
 ### 6. `tare-dev` itself
 
-**Finding:** Keeping `tare-dev` active risked future drift and confusion about which repo is canonical.  
-**Fix:**
-- Added a deprecation header to `tare-dev/README.md` pointing to `onlinejourno/tare`.
-- Archived `onlinejourno/tare-dev` via GitHub.
+**Superseded (see the correction at the top).** The original version deprecated +
+archived `tare-dev`. That is reversed: **`tare-dev` remains the active private dev
+line**; the archive is being undone and no deprecation header should point away
+from it. Drift between the two repos is managed the normal private-first way
+(publish from `tare-dev` to `tare`), not by retiring `tare-dev`.
 
 ## Verification
 
@@ -81,11 +90,12 @@ npx knip                # no unused files / dependencies / exports
 
 ## Result
 
-The canonical `onlinejourno/tare` repository now:
+The public `onlinejourno/tare` repository now:
 - Builds and passes its full test suite.
 - Has an automated dead-code detector (`knip`) wired into CI.
-- Contains a single, up-to-date set of documentation.
+- Contains an up-to-date set of documentation, current with the dev line.
 - No longer references the old `web-bloat-checker` name in deploy config or README.
-- Is the sole source of truth for Tare development.
 
-The deprecated `onlinejourno/tare-dev` repository has been archived and its README redirects users and contributors to the canonical repo.
+Development continues on the private `onlinejourno/tare-dev` line; `tare` is
+published from it (private-first). `tare-dev` is **not** deprecated — the earlier
+archival is being reversed (see the correction at the top).
