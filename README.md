@@ -83,8 +83,10 @@ This is one of [OnlineJourno](https://onlinejourno.com)'s **fully open-source** 
 
 MIT — fully open source, use it freely. See [LICENSE.md](LICENSE.md).
 
-**Maturity:** live. Solid: SSRF guard, 180-test suite incl. golden band/detector tests. Rough: openness audit missing from README (P5.13).
+**Maturity:** live. Solid: SSRF guard, 180-test suite incl. golden band/detector tests.
 
-Suite licensing: Source-available under FSL-1.1; converts to Apache 2.0 after two years. The free tools (Tare, Crawl-Budget Analyser) are MIT. Pulse is a proprietary showcase of the engine.
+## Part of OnlineJourno
+
+Tare is a fully open MIT tool from [OnlineJourno](https://onlinejourno.com). It is also one of the capabilities that feed into **[OnlineJourno Newsroom](https://onlinejourno.com/newsroom)**.
 
 Grading note: the reader-respect scale (A>=80, B>=65, C>=45, D>=25; Reader-Respecting through Egregious) is deliberately distinct from the OnlineJourno suite's A-F editorial bands.
