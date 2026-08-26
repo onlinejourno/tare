@@ -1,0 +1,11 @@
+# Every crawl of an analysis endpoint is a free run: a headless page load, the
+# signal probes and the scoring pass, all on someone else's behalf. The landing
+# page is worth indexing; the endpoints behind it are not.
+#
+# This stops POLITE crawlers only. A scripted abuser ignores robots.txt, which
+# is what the per-IP limiters in server/index.js are for.
+User-agent: *
+Allow: /$
+Disallow: /api/
+Disallow: /classify
+Disallow: /score
