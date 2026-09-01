@@ -33,7 +33,7 @@ function generateRecommendations(analysis) {
       detail: hb
         ? `Header bidding is running with ${rtbCascade.uniqueParticipants} simultaneous SSPs (${rtbCascade.participantNames.slice(0,5).join(', ')}${rtbCascade.participantNames.length > 5 ? '…' : ''}). ` +
           'In the ~100ms before the page loads, a bid request containing the reader\'s identity, location, device, and page context is broadcast to all of them — and through them to their downstream DSP buyers. ' +
-          'This is not a metaphor. It is the literal technical operation described in The Digital Mirror\'s governing case study.'
+          'This is not a metaphor: it is the literal technical operation, and it repeats on every page view.'
         : `Programmatic advertising detected (${rtbCascade.participantNames.slice(0,4).join(', ')}). ` +
           'Each ad request broadcasts reader identity and page context to the receiving ad network and its downstream buyers.',
       alternatives: ALTERNATIVES.ssp || [],
