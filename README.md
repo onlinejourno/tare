@@ -73,7 +73,7 @@ reports/              Generated report files (gitignored)
 
 ## Open source — newsroom tech, by a journalist
 
-This is one of [OnlineJourno](https://onlinejourno.com)'s **fully open-source** tools (MIT). OnlineJourno's *products* are fair-source; this one is a deliberate gift to the commons — no strings.
+This is one of [OnlineJourno](https://onlinejourno.com)'s **fully open-source** tools (MIT). OnlineJourno's *products* are proprietary; this one is a deliberate gift to the commons — no strings.
 
 **Why a journalist built this:** most newsroom technology is built by engineers *at* news organisations, *for* news organisations. This isn't that. I'm a journalist — 25+ years in digital newsrooms — and I built this because readers' data leaks to ad-networks while a page crawls to load, and no one in editorial can see it. A page's *privacy cost* should be visible to the people who publish it, not buried in ad-ops. It's open because surveillance-free publishing shouldn't be a paid feature.
 
