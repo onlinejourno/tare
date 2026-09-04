@@ -14,6 +14,8 @@ const { startSignalProbes, upgradeDomSignals } = require('./signalProbes');
 const { assembleAnalysisResult } = require('./analysisResult');
 const { writeReports } = require('./reportGenerator');
 const jobs = require('./jobs');
+const { targetUriFor, verifyStringerSignature } = require('./stringerAuth');
+const { buildLatestPayload } = require('./stringerRoutes');
 
 const app = express();
 app.set('trust proxy', 1); // one proxy (Fly) in front — trust it so req.ip is the real client
@@ -195,6 +197,37 @@ app.get('/api/download/:jobId/:format', readLimiter, async (req, res) => {
   }
 
   res.download(filePath, `web-bloat-report.${format}`);
+});
+
+// ── GET /stringer/tare/latest  (Stringer capability — signed, read-only) ──────
+//
+// Reachable from outside, unlike the /api/publications index above, because
+// the HMAC signature is the authentication rather than the caller's address.
+// Fails closed: with TARE_STRINGER_KEY unset, every request is refused.
+//
+// Read-only by design. Tare analyses a page by driving a headless browser, and
+// the hub polls this on a 60-second hint — running an analysis here would turn
+// a status widget into a cost sink. It returns what is already stored.
+app.get('/stringer/tare/latest', async (req, res) => {
+  const ok = verifyStringerSignature(
+    'GET',
+    targetUriFor(req),
+    '',
+    req.headers,
+    process.env.TARE_STRINGER_KEY || '',
+  );
+  if (!ok) return res.status(401).json({ error: 'unauthorized' });
+
+  const { listRecent } = require('./db');
+  try {
+    const rows = await listRecent(1);
+    res.json(buildLatestPayload(rows && rows.length ? rows[0] : null));
+  } catch (err) {
+    console.error('[tare] stringer latest failed:', err);
+    // Do not return err.message: this endpoint is reachable from outside and a
+    // driver error can carry the connection string.
+    res.status(500).json({ error: 'internal' });
+  }
 });
 
 // ── GET /api/publications  (local index — all Publications, latest score) ─────
