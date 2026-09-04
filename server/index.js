@@ -208,7 +208,14 @@ app.get('/api/download/:jobId/:format', readLimiter, async (req, res) => {
 // Read-only by design. Tare analyses a page by driving a headless browser, and
 // the hub polls this on a 60-second hint — running an analysis here would turn
 // a status widget into a cost sink. It returns what is already stored.
-app.get('/stringer/tare/latest', async (req, res) => {
+//
+// Rate-limited like every other read route, and for a sharper reason than they
+// need: this one is reachable unauthenticated, and each rejected call still
+// costs an HMAC computation. Verifying a signature is not free, so a route that
+// verifies one without a limiter lets anybody spend this install's CPU without
+// ever holding a key. CodeQL caught its absence (js/missing-rate-limiting) and
+// was right to.
+app.get('/stringer/tare/latest', readLimiter, async (req, res) => {
   const ok = verifyStringerSignature(
     'GET',
     targetUriFor(req),
