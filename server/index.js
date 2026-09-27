@@ -222,6 +222,9 @@ app.get('/stringer/tare/latest', readLimiter, async (req, res) => {
     '',
     req.headers,
     process.env.TARE_STRINGER_KEY || '',
+    undefined,
+    // When set (empty included), a v2 signature must name exactly this keyid.
+    process.env.TARE_STRINGER_KEY_ID,
   );
   if (!ok) return res.status(401).json({ error: 'unauthorized' });
 
