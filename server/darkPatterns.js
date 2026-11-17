@@ -1,5 +1,7 @@
 'use strict';
 
+const { BROWSER_UA } = require('./userAgent');
+
 // ── Anti-adblock phrase patterns (checked in page text after ad domains blocked) ─
 const ANTIBLOCK_PHRASES = [
   'ad blocker detected', 'adblocker detected', 'adblock detected',
@@ -224,7 +226,7 @@ async function detectAdBlockerWall(url, browser) {
   let context = null;
   try {
     context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      userAgent: BROWSER_UA,
       viewport: { width: 1280, height: 800 },
     });
 
