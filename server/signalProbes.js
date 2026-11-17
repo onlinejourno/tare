@@ -10,6 +10,7 @@ const https = require('https');
 const http  = require('http');
 const { isPrivateHostname, guardedLookup } = require('./ssrfGuard');
 const { TARE_TAG } = require('./userAgent');
+const { hostHeaders } = require('./hostHeaders');
 
 // ── RSS HTTP probe (runs server-side, bypasses Cloudflare JS challenge) ────────
 // Tries common feed paths via plain HTTP GET — no headless browser needed.
@@ -38,7 +39,7 @@ function _fetch(url, readBody, ua = PROBE_UA, maxBytes = 30000) {
       return resolve(empty);
     }
     const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.get(url, { lookup: guardedLookup, headers: { 'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml' }, timeout: 8000 }, (res) => {
+    const req = mod.get(url, { lookup: guardedLookup, headers: { 'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml', ...hostHeaders(url) }, timeout: 8000 }, (res) => {
       const status   = res.statusCode || 0;
       const ct       = res.headers['content-type'] || '';
       const location = res.headers['location'] || '';

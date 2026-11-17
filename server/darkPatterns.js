@@ -1,6 +1,7 @@
 'use strict';
 
 const { BROWSER_UA } = require('./userAgent');
+const { continueWithHostHeaders } = require('./hostHeaders');
 
 // ── Anti-adblock phrase patterns (checked in page text after ad domains blocked) ─
 const ANTIBLOCK_PHRASES = [
@@ -238,7 +239,7 @@ async function detectAdBlockerWall(url, browser) {
       const reqUrl = route.request().url();
       const shouldBlock = AD_BLOCK_DOMAINS.some(d => reqUrl.includes(d));
       if (shouldBlock) { blockedCount++; route.abort(); }
-      else route.continue();
+      else continueWithHostHeaders(route);
     });
 
     try {

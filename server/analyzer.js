@@ -3,6 +3,7 @@
 const { chromium, errors: pwErrors } = require('playwright');
 const { isPrivateHostname } = require('./ssrfGuard');
 const { BROWSER_UA } = require('./userAgent');
+const { continueWithHostHeaders } = require('./hostHeaders');
 const { CATEGORY_META } = require('./data/trackers');
 const { lookupTracker, isGoogleHostname } = require('./trackerRegistry');
 const { detectDarkPatterns, detectAdBlockerWall } = require('./darkPatterns');
@@ -222,7 +223,7 @@ async function analyzeUrl(url, emitProgress) {
     // late XHR) to a private/link-local host that slipped past entry validation.
     await context.route('**', (route) => {
       if (isPrivateHostname(getHostname(route.request().url()))) return route.abort();
-      return route.continue();
+      return continueWithHostHeaders(route);
     });
 
     const requestMap             = new Map();
