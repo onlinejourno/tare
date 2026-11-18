@@ -9,6 +9,8 @@
 const https = require('https');
 const http  = require('http');
 const { isPrivateHostname, guardedLookup } = require('./ssrfGuard');
+const { TARE_TAG } = require('./userAgent');
+const { hostHeaders } = require('./hostHeaders');
 
 // ── RSS HTTP probe (runs server-side, bypasses Cloudflare JS challenge) ────────
 // Tries common feed paths via plain HTTP GET — no headless browser needed.
@@ -21,10 +23,9 @@ const RSS_DIRECT_PATHS = [
 ];
 const RSS_INDEX_PATHS  = ['/rssfeeds/', '/feeds/', '/rss/', '/rss-feeds/'];
 const RSS_LINK_RE      = /href=["'][^"']*(?:\.rss|\.xml|\/feeder\/|\/feed\/|\/rssfeeds\/)[^"']*/i;
-// Two UAs: crawler UA for institutional paths (allows publisher allowlisting),
-// Chrome UA for article fetches (passes Cloudflare WAF static HTML serving).
-const PROBE_UA        = 'DemocraticInfrastructureChecker/1.0 (+https://digitalmirror.info/checker)';
-const CHROME_UA       = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+// Crawler UA for every probe (allows publisher allowlisting), tagged with
+// Tare's name so a site that blocks unknown visitors can let Tare through.
+const PROBE_UA        = `DemocraticInfrastructureChecker/1.0 (+https://digitalmirror.info/checker) ${TARE_TAG}`;
 
 function _fetch(url, readBody, ua = PROBE_UA, maxBytes = 30000) {
   return new Promise((resolve) => {
@@ -38,7 +39,7 @@ function _fetch(url, readBody, ua = PROBE_UA, maxBytes = 30000) {
       return resolve(empty);
     }
     const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.get(url, { lookup: guardedLookup, headers: { 'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml' }, timeout: 8000 }, (res) => {
+    const req = mod.get(url, { lookup: guardedLookup, headers: { 'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml', ...hostHeaders(url) }, timeout: 8000 }, (res) => {
       const status   = res.statusCode || 0;
       const ct       = res.headers['content-type'] || '';
       const location = res.headers['location'] || '';

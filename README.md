@@ -52,6 +52,18 @@ This tool runs entirely on your own machine. No data is sent anywhere except to 
 
 Analyses are stored in Neon Postgres (`DATABASE_URL`, pooled). Schema auto-creates at boot. `npm test` needs no DB (uses pg-mem).
 
+## A site behind a door
+
+Some sites block unknown visitors but let Tare in on a secret header. `FETCH_HOST_HEADERS` is JSON mapping a host to the headers it needs, e.g. `{"news.example": {"X-Site-Key": "<SECRET>"}}`; the host and its subdomains match, and a redirect to another host never carries them.
+
+The web form runs any site for anyone and shows what it saw, so it **never** sends these headers. Only an operator run does, from the machine where the secret lives:
+
+```bash
+fly ssh console -a <APP> -C "node /app/server/operatorRun.js https://<SITE>"
+```
+
+It stores the run like any other and exits 0, or 1 (analysis or store failed) or 2 (URL refused) with the reason.
+
 ## Architecture
 
 ```

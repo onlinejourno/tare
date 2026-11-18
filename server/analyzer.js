@@ -2,6 +2,8 @@
 
 const { chromium, errors: pwErrors } = require('playwright');
 const { isPrivateHostname } = require('./ssrfGuard');
+const { BROWSER_UA } = require('./userAgent');
+const { hostHeaderRoute } = require('./hostHeaders');
 const { CATEGORY_META } = require('./data/trackers');
 const { lookupTracker, isGoogleHostname } = require('./trackerRegistry');
 const { detectDarkPatterns, detectAdBlockerWall } = require('./darkPatterns');
@@ -211,7 +213,7 @@ async function analyzeUrl(url, emitProgress) {
   try {
     const context = await browser.newContext({
       serviceWorkers: 'block',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      userAgent: BROWSER_UA,
       viewport: { width: 1280, height: 800 },
     });
 
@@ -219,9 +221,10 @@ async function analyzeUrl(url, emitProgress) {
 
     // SSRF defence-in-depth: abort any request (redirect target, sub-resource,
     // late XHR) to a private/link-local host that slipped past entry validation.
+    const withHostHeaders = hostHeaderRoute();
     await context.route('**', (route) => {
       if (isPrivateHostname(getHostname(route.request().url()))) return route.abort();
-      return route.continue();
+      return withHostHeaders(route);
     });
 
     const requestMap             = new Map();
