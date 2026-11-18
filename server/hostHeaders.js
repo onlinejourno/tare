@@ -10,10 +10,25 @@
 //
 // In the browser the token is added per request through a route, never as a
 // context-wide header, so the trackers and ad servers a page loads never see it.
+//
+// The headers can be a secret that lets Tare past a site's block. POST
+// /api/analyze runs any site for anyone and returns what it saw, so a public
+// run must never send them: only an operator run (server/operatorRun.js)
+// opens the door. AsyncLocalStorage, not a global: work started outside
+// operatorDoor() never sees it open, even while an operator run is going.
+
+const { AsyncLocalStorage } = require('async_hooks');
 
 const ENV = 'FETCH_HOST_HEADERS';
+const door = new AsyncLocalStorage();
+
+// Run fn (and everything it starts) with FETCH_HOST_HEADERS sent.
+function operatorDoor(fn) {
+  return door.run(true, fn);
+}
 
 function hostHeaders(url) {
+  if (door.getStore() !== true) return {};
   const raw = (process.env[ENV] || '').trim();
   if (!raw) return {};
   let table;
@@ -34,7 +49,11 @@ function hostHeaders(url) {
   return {};
 }
 
-// route.continue(), adding the token only when this request's host needs one.
+// A route handler: route.continue(), adding the token only when this request's
+// host needs one.
+//
+// The door is read here, when the route is made, and fixed: Playwright calls
+// the handler from its own connection, not from the run's async context.
 //
 // Not route.continue({ headers }): Chromium keeps an overridden header on a
 // redirect, so a 302 to another host would carry the token there
@@ -42,12 +61,15 @@ function hostHeaders(url) {
 // redirects off and handed back as-is; the browser follows any redirect as a
 // new request, which comes back through this route and is judged by its own
 // host.
-async function continueWithHostHeaders(route) {
-  const request = route.request();
-  const extra = hostHeaders(request.url());
-  if (Object.keys(extra).length === 0) return route.continue();
-  const response = await route.fetch({ headers: { ...request.headers(), ...extra }, maxRedirects: 0 });
-  return route.fulfill({ response });
+function hostHeaderRoute() {
+  if (door.getStore() !== true) return (route) => route.continue();
+  return async (route) => {
+    const request = route.request();
+    const extra = operatorDoor(() => hostHeaders(request.url()));
+    if (Object.keys(extra).length === 0) return route.continue();
+    const response = await route.fetch({ headers: { ...request.headers(), ...extra }, maxRedirects: 0 });
+    return route.fulfill({ response });
+  };
 }
 
-module.exports = { hostHeaders, continueWithHostHeaders };
+module.exports = { hostHeaders, operatorDoor, hostHeaderRoute };
