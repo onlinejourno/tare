@@ -16,6 +16,7 @@ const { writeReports } = require('./reportGenerator');
 const jobs = require('./jobs');
 const { targetUriFor, verifyStringerSignature } = require('./stringerAuth');
 const { buildLatestPayload } = require('./stringerRoutes');
+const { registerOperatorRun } = require('./operatorRunRoutes');
 
 const app = express();
 app.set('trust proxy', 1); // one proxy (Fly) in front — trust it so req.ip is the real client
@@ -25,7 +26,8 @@ const MAX_CONCURRENT = 3;
 
 fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
-app.use(express.json());
+// rawBody: a signed route checks its digest against the bytes that were sent.
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // URL validation (SSRF guard) lives in ./ssrfGuard. Loopback check below gates
@@ -239,6 +241,8 @@ app.get('/stringer/tare/latest', readLimiter, async (req, res) => {
     res.status(500).json({ error: 'internal' });
   }
 });
+
+registerOperatorRun(app, { limiter: analyzeLimiter, statusLimiter: readLimiter });
 
 // ── GET /api/publications  (local index — all Publications, latest score) ─────
 app.get('/api/publications', async (req, res) => {

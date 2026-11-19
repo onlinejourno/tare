@@ -64,6 +64,8 @@ fly ssh console -a <APP> -C "node /app/server/operatorRun.js https://<SITE>"
 
 It stores the run like any other and exits 0, or 1 (analysis or store failed) or 2 (URL refused) with the reason.
 
+The hub can start the same run with a signed `POST /stringer/tare/operator-run` (`{"url": "..."}`) and follow it at `GET /stringer/tare/operator-run/<id>`. Both need the hub's `stringer-v2` signature under `TARE_STRINGER_KEY`; the host must be one `FETCH_HOST_HEADERS` names; one run goes at a time, and a new one waits `OPERATOR_RUN_COOLDOWN_MINUTES` (default 10) after the last start. The result is read through the signed `latest` endpoint, never returned here.
+
 ## Architecture
 
 ```

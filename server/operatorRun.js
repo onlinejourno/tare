@@ -58,4 +58,4 @@ if (require.main === module) {
   main(process.argv.slice(2)).then((code) => process.exit(code));
 }
 
-module.exports = { main };
+module.exports = { main, DEFAULTS };
