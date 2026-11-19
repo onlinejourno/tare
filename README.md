@@ -21,6 +21,39 @@ npm start
 # Open http://localhost:3000
 ```
 
+## Command line — one URL, JSON out, a budget you can fail a build on
+
+The web UI answers "how bloated is this page?" for a person. The CLI answers it for a
+build, so a site cannot get heavy one commit at a time without anyone noticing.
+
+```bash
+npm install && npx playwright install chromium
+npx tare https://example.com/ --max-transfer-bytes 250kb --max-trackers 0
+```
+
+It prints a JSON summary on stdout and a readable line on stderr, so `> report.json` gives
+you the machine-readable half and you still see what happened.
+
+| budget | fails when |
+|---|---|
+| `--max-transfer-bytes` | total transfer exceeds it — takes `250kb`, `1mb` or a plain number |
+| `--max-trackers` | more known trackers than allowed |
+| `--max-third-party` | more third-party requests than allowed |
+| `--max-unused-js-percent` | more of the shipped JavaScript is never executed |
+
+**Exit codes are distinct on purpose:** `0` within budget, `1` a budget was exceeded — a
+finding, not a broken tool — and `2` the analysis could not run at all. A CI job that
+cannot tell those apart will eventually treat a crash as a pass.
+
+Two more flags: `--json` prints only the JSON (one line), and `--allow-private` permits a
+loopback or private host for testing a page on your own machine. `--allow-private` skips
+the SSRF guard, so it is for local use and never for a job that takes a URL from anyone
+else.
+
+If the page was served by a bot wall, the summary says so in `accessBlocked` — the numbers
+then describe the block page, not the site, and a green build on a challenge page is worse
+than a red one.
+
 ## Self-host with Docker Compose
 
 ```bash
